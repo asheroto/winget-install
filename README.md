@@ -9,10 +9,14 @@
 
 ## Script Functionality
 
- - **VCLibs** and **Xaml** are installed first
- - Processor architecture is determined for prerequisites
- - **VCLibs** is installed straight from the appx package
- - **Xaml** is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
- - **Winget** is then installed
- - User **PATH** variable is adjusted to include WindowsApps folder
- - Easily adjust **winget** and **winget license URLs** at top of script when updates occur
+- **VCLibs** and **Xaml** are installed first
+- Processor architecture is determined for prerequisites
+- **VCLibs** is installed straight from the appx package
+- **Xaml** is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
+- **Winget** is then installed
+- User **PATH** variable is adjusted to include WindowsApps folder
+- Easily adjust **winget** and **winget license URLs** at top of script when updates occur
+
+## Note
+
+- If you receive an error message about the Appx module not being loaded, try using a different version of PowerShell (version 6 and 7 seem to be buggy still, but the native PowerShell version in Windows works)
