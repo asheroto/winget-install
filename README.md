@@ -1,3 +1,5 @@
+![image](https://user-images.githubusercontent.com/49938263/164990481-a82586ac-db45-42b1-b543-c3756eafe045.png)
+
 # Install winget-cli from PowerShell
 - Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
 - Works on Windows 10, Windows 11, Server 2019/2022
