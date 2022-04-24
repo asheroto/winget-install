@@ -6,7 +6,7 @@
 # Available Scripts
 - **winget-install.ps1**
   - Unsigned script
-- **winget-install-signed.ps1.zip**
+- **winget-install-signed.zip**
   - Signed script
   - Compressed for transport and to retain signature
   - Uncompress to use
