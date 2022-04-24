@@ -16,11 +16,11 @@
 
 ## Script Functionality
 
-- **VCLibs** and **Xaml** are installed first
+- [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) and [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) are installed first
 - Processor architecture is determined for prerequisites
-- **VCLibs** is installed straight from the appx package
-- **Xaml** is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
-- **Winget** is then installed
+- [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) is installed straight from the appx package
+- [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
+- [winget-cli](https://github.com/microsoft/winget-cli) is then installed
 - User **PATH** variable is adjusted to include WindowsApps folder
 - Easily adjust **winget** and **winget license URLs** at top of script when updates occur
 
