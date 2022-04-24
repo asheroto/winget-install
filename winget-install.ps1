@@ -10,7 +10,7 @@ function section($text) {
 
 # Add AppxPackage and silently continue on error
 function AAP($pkg) {
-	Add-AppxPackage $pkg
+	Add-AppxPackage $pkg -ErrorAction SilentlyContinue
 }
 
 # Download XAML nupkg and extract appx file
@@ -52,7 +52,7 @@ Invoke-WebRequest -Uri $wingetUrl -OutFile $wingetPath
 $wingetLicensePath = "license1.xml"
 Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
 section("Installing winget...")
-Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath
+Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue
 
 # Adding WindowsApps directory to PATH variable for current user
 section("Adding WindowsApps directory to PATH variable for current user...")
