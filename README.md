@@ -4,8 +4,13 @@
 - Easily adjust URLs when updates occur
 
 # Available Scripts
-- **winget-install.ps1** - unsigned script
-- **winget-install-signed.ps1** - signed script (for use if you do not want to enable unsigned script execution in PowerShell)
+- **winget-install.ps1**
+  - Unsigned script
+- **winget-install-signed.ps1.zip**
+  - Signed script
+  - Compressed for transport and to retain signature
+  - Uncompress to use
+  - For use if you do not want to enable unsigned script execution in PowerShell
 
 ## Script Functionality
 
