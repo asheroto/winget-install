@@ -57,7 +57,7 @@
 
 - User **PATH** variable is adjusted to include WindowsApps folder
 
-- Easily adjust **winget** and **winget license URLs** at top of script when updates occur
+- Grabs the latest version of winget on each run
 
   
 
