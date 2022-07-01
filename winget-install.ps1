@@ -1,8 +1,59 @@
-# Easily change in the future
-$wingetUrl = "https://github.com/microsoft/winget-cli/releases/download/v1.3.431/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-$wingetLicenseUrl = "https://github.com/microsoft/winget-cli/releases/download/v1.3.431/e40f7d30e22c4c0eb9194f5e9aed26b8_License1.xml"
+<#PSScriptInfo
+
+.VERSION 0.0.3
+
+.GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
+
+.AUTHOR asherto, 1ckov
+
+.COMPANYNAME asheroto
+
+.TAGS PowerShell Windows winget win get install installer fix script
+
+.PROJECTURI https://github.com/asheroto/winget-installer
+
+.RELEASENOTES
+[Version 0.0.1] - Initial Release.
+[Version 0.0.2] - Implemented function to get the latest version of Winget and its license.
+[Version 0.0.3] - Signed file for PSGallery.
+
+#>
+
+<#
+.SYNOPSIS
+    Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
+.DESCRIPTION
+    Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
+.EXAMPLE
+    winget-install
+.NOTES
+    Version      : 0.0.3
+    Created by   : asheroto
+.LINK
+    Project Site: https://github.com/asheroto/winget-installer
+#>
+
+
+function getNewestLink($match) {
+	$uri = "https://api.github.com/repos/microsoft/winget-cli/releases"
+	Write-Verbose "[$((Get-Date).TimeofDay)] Getting information from $uri"
+	$get = Invoke-RestMethod -uri $uri -Method Get -ErrorAction stop
+	Write-Verbose "[$((Get-Date).TimeofDay)] getting latest release"
+	$data = $get[0].assets | Where-Object name -Match $match
+	return $data.browser_download_url
+}
+
+$wingetUrl = getNewestLink("msixbundle")
+$wingetLicenseUrl = getNewestLink("License1.xml")
 
 function section($text) {
+	<#
+        .SYNOPSIS
+        Prints a section divider for easy reading of the output.
+
+        .DESCRIPTION
+        Prints a section divider for easy reading of the output.
+    #>
 	Write-Output "###################################"
 	Write-Output "# $text"
 	Write-Output "###################################"
@@ -10,6 +61,13 @@ function section($text) {
 
 # Add AppxPackage and silently continue on error
 function AAP($pkg) {
+	<#
+        .SYNOPSIS
+        Adds an AppxPackage to the system.
+
+        .DESCRIPTION
+        Adds an AppxPackage to the system.
+    #>
 	Add-AppxPackage $pkg -ErrorAction SilentlyContinue
 }
 
@@ -35,11 +93,11 @@ if ([Environment]::Is64BitOperatingSystem) {
 	AAP("Microsoft.UI.Xaml.2.7.1.nupkg\tools\AppX\x64\Release\Microsoft.UI.Xaml.2.7.appx")
 } else {
 	section("32-bit OS detected")
-	
+
 	# Install x86 VCLibs
 	section("Downloading & installing x86 VCLibs... (21000000ish bytes)")
 	AAP("https://aka.ms/Microsoft.VCLibs.x86.14.00.Desktop.appx")
-	
+
 	# Install x86 XAML
 	section("Installing x86 XAML...")
 	AAP("Microsoft.UI.Xaml.2.7.1.nupkg\tools\AppX\x86\Release\Microsoft.UI.Xaml.2.7.appx")
@@ -57,7 +115,7 @@ Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $winget
 # Adding WindowsApps directory to PATH variable for current user
 section("Adding WindowsApps directory to PATH variable for current user...")
 $path = [Environment]::GetEnvironmentVariable("PATH", "User")
-$path = $path + ";" + [IO.Path]::Combine([Environment]::GetEnvironmentVariable("LOCALAPPDATA"),"Microsoft","WindowsApps")
+$path = $path + ";" + [IO.Path]::Combine([Environment]::GetEnvironmentVariable("LOCALAPPDATA"), "Microsoft", "WindowsApps")
 [Environment]::SetEnvironmentVariable("PATH", $path, "User")
 
 # Cleanup
