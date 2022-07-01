@@ -9,7 +9,7 @@
 
 ## How to use 
 
-### Method 1 - easiest - no need to download the file because it connects to PSGallery to fetch it
+### Method 1 - no need to download the file because it connects to PSGallery to fetch it
 
 - In PowerShell, type `Install-Script -Name winget-install` and answer yes to any prompts
 
