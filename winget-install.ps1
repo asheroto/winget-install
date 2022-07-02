@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 0.0.3
+.VERSION 0.0.4
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -16,6 +16,7 @@
 [Version 0.0.1] - Initial Release.
 [Version 0.0.2] - Implemented function to get the latest version of Winget and its license.
 [Version 0.0.3] - Signed file for PSGallery.
+[Version 0.0.4] - Changed URI to grab latest release instead of releases and preleases.
 
 #>
 
@@ -27,7 +28,7 @@
 .EXAMPLE
     winget-install
 .NOTES
-    Version      : 0.0.3
+    Version      : 0.0.4
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-installer
@@ -35,7 +36,7 @@
 
 
 function getNewestLink($match) {
-	$uri = "https://api.github.com/repos/microsoft/winget-cli/releases"
+	$uri = "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
 	Write-Verbose "[$((Get-Date).TimeofDay)] Getting information from $uri"
 	$get = Invoke-RestMethod -uri $uri -Method Get -ErrorAction stop
 	Write-Verbose "[$((Get-Date).TimeofDay)] getting latest release"
