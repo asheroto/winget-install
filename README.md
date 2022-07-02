@@ -15,6 +15,12 @@
 
 - Then type `winget-install`
 
+### Tip - how to trust PSGallery
+
+If you want to trust PSGallery so you aren't prompted each time you run this command, you can type...
+
+`Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted`
+
 ### Method 2 - download file locally and run
 
 - Download `winget-install.ps1` or `winget-install-signed.zip` (and extract the inner PS1 script)
