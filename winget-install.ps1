@@ -74,6 +74,7 @@ function AAP($pkg) {
 }
 
 #(Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders").PSObject.Properties["Common Documents"].Value
+#(New-Object -ComObject Shell.Application).NameSpace('Shell:Common Documents').Self.Path
 #$downloadsFolder = (Get-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders").PSObject.Properties["{374DE290-123F-4565-9164-39C4925E467B}"].Value
 $downloadFolder = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
 
