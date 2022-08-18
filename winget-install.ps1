@@ -17,7 +17,6 @@
 [Version 0.0.2] - Implemented function to get the latest version of Winget and its license.
 [Version 0.0.3] - Signed file for PSGallery.
 [Version 0.0.4] - Changed URI to grab latest release instead of releases and preleases.
-[Version 0.0.4.1] - [additional change] change Microsoft.UI.Xaml to v2.8, download files to download-directory
 
 #>
 
@@ -29,7 +28,7 @@
 .EXAMPLE
     winget-install
 .NOTES
-    Version      : 0.0.4.1
+    Version      : 0.0.4
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-installer
@@ -73,19 +72,14 @@ function AAP($pkg) {
 	Add-AppxPackage $pkg -ErrorAction SilentlyContinue
 }
 
-#(Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders").PSObject.Properties["Common Documents"].Value
-#(New-Object -ComObject Shell.Application).NameSpace('Shell:Common Documents').Self.Path
-#$downloadsFolder = (Get-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders").PSObject.Properties["{374DE290-123F-4565-9164-39C4925E467B}"].Value
-$downloadFolder = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
-
 # Download XAML nupkg and extract appx file
 section("Downloading Xaml nupkg file... (19000000ish bytes)")
-$url = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.1"
-$nupkgFolder = "$downloadFolder\Microsoft.UI.Xaml.2.8.1"
-$zipFile = "$downloadFolder\Microsoft.UI.Xaml.2.8.1.nupkg.zip"
+$url = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.7.1"
+$nupkgFolder = "Microsoft.UI.Xaml.2.7.1.nupkg"
+$zipFile = "Microsoft.UI.Xaml.2.7.1.nupkg.zip"
 Invoke-WebRequest -Uri $url -OutFile $zipFile
 section("Extracting appx file from nupkg file...")
-Expand-Archive $zipFile -DestinationPath $nupkgFolder
+Expand-Archive $zipFile
 
 # Determine architecture
 if ([Environment]::Is64BitOperatingSystem) {
@@ -97,7 +91,7 @@ if ([Environment]::Is64BitOperatingSystem) {
 
 	# Install x64 XAML
 	section("Installing x64 XAML...")
-	AAP("$nupkgFolder\tools\AppX\x64\Release\Microsoft.UI.Xaml.2.8.appx")
+	AAP("Microsoft.UI.Xaml.2.7.1.nupkg\tools\AppX\x64\Release\Microsoft.UI.Xaml.2.7.appx")
 } else {
 	section("32-bit OS detected")
 
@@ -107,14 +101,14 @@ if ([Environment]::Is64BitOperatingSystem) {
 
 	# Install x86 XAML
 	section("Installing x86 XAML...")
-	AAP("$nupkgFolder\tools\AppX\x86\Release\Microsoft.UI.Xaml.2.8.appx")
+	AAP("Microsoft.UI.Xaml.2.7.1.nupkg\tools\AppX\x86\Release\Microsoft.UI.Xaml.2.7.appx")
 }
 
 # Finally, install winget
 section("Downloading winget... (21000000ish bytes)")
-$wingetPath = "$downloadFolder\winget.msixbundle"
+$wingetPath = "winget.msixbundle"
 Invoke-WebRequest -Uri $wingetUrl -OutFile $wingetPath
-$wingetLicensePath = "$downloadFolder\license1.xml"
+$wingetLicensePath = "license1.xml"
 Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
 section("Installing winget...")
 Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue
