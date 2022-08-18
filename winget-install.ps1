@@ -84,7 +84,7 @@ $nupkgFolder = "$downloadFolder\Microsoft.UI.Xaml.2.8.1"
 $zipFile = "$downloadFolder\Microsoft.UI.Xaml.2.8.1.nupkg.zip"
 Invoke-WebRequest -Uri $url -OutFile $zipFile
 section("Extracting appx file from nupkg file...")
-Expand-Archive $zipFile $nupkgFolder
+Expand-Archive $zipFile -DestinationPath $nupkgFolder
 
 # Determine architecture
 if ([Environment]::Is64BitOperatingSystem) {
@@ -96,7 +96,7 @@ if ([Environment]::Is64BitOperatingSystem) {
 
 	# Install x64 XAML
 	section("Installing x64 XAML...")
-	AAP("nupkgFolder\tools\AppX\x64\Release\Microsoft.UI.Xaml.2.8.appx")
+	AAP("$nupkgFolder\tools\AppX\x64\Release\Microsoft.UI.Xaml.2.8.appx")
 } else {
 	section("32-bit OS detected")
 
@@ -106,7 +106,7 @@ if ([Environment]::Is64BitOperatingSystem) {
 
 	# Install x86 XAML
 	section("Installing x86 XAML...")
-	AAP("nupkgFolder\tools\AppX\x86\Release\Microsoft.UI.Xaml.2.8.appx")
+	AAP("$nupkgFolder\tools\AppX\x86\Release\Microsoft.UI.Xaml.2.8.appx")
 }
 
 # Finally, install winget
