@@ -3,7 +3,8 @@
 # Install winget-cli from PowerShell
 
 - Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
-- Works on Windows 10, Windows 11, Server 2019/2022
+- Works on Windows 10, Windows 11, Server 2022
+- Does not work on Server 2019
 - Always gets the latest version of winget
   
 
