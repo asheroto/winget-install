@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.0
+.VERSION 1.0.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -17,8 +17,9 @@
 [Version 0.0.2] - Implemented function to get the latest version of Winget and its license.
 [Version 0.0.3] - Signed file for PSGallery.
 [Version 0.0.4] - Changed URI to grab latest release instead of releases and preleases.
-[Version 0.0.5] - Update version number of dependencies.
+[Version 0.0.5] - Updated version number of dependencies.
 [Version 1.0.0] - Major refactor code, see release notes for more information.
+[Version 1.0.1] - Fixed minor bug where version 2.8 was hardcoded in URL.
 
 #>
 
@@ -30,7 +31,7 @@
 .EXAMPLE
     Install-Winget
 .NOTES
-    Version      : 1.0.0
+    Version      : 1.0.1
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-installer
@@ -118,7 +119,7 @@ Add-AppxPackageSilently $urlVCLibs
 
 # Install XAML
 Write-Section("Installing ${arch} XAML...")
-$XamlAppxPath = Join-Path -Path $nupkgFolder -ChildPath "tools\AppX\$arch\Release\Microsoft.UI.Xaml.2.8.appx"
+$XamlAppxPath = Join-Path -Path $nupkgFolder -ChildPath "tools\AppX\$arch\Release\Microsoft.UI.Xaml.$MicrosoftUIXamlVersion.appx"
 Add-AppxPackageSilently $XamlAppxPath
 
 # Finally, install winget
