@@ -1,3 +1,4 @@
+
 ![image](https://github.com/asheroto/winget-installer/assets/49938263/e34c4551-291c-4862-8028-d35b4b7b0cec)
 
 [![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-installer)](https://github.com/asheroto/winget-installer/releases)
@@ -29,37 +30,46 @@
 
 -   Grabs the latest version of winget on each run
 
-## Installation
+## Setup
 
 ### Method 1 - PowerShell Gallery
 
--   In PowerShell, type
-```
-Install-Script winget-install
+- In PowerShell, type
+```powershell
+Install-Script winget-install -Force
 ```
 - answer **Yes** to all prompts if asked
+**Note:** `-Force` is optional, but it will force the script to update if it is outdated.
 
 ### Tip - How to trust PSGallery
 
 If you want to trust PSGallery so you aren't prompted each time you run this command, you can type...
 
-`Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted`
+```powershell
+Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+```
 
 ### Method 2 - Download Locally and Run
 
--   Download `winget-install.ps1`
+- Download `winget-install.ps1`
+- Run the script with `.\winget-install.ps1`
 
--   Run the script with `.\winget-install.ps1`
+## Usage
+
+In PowerShell, type
+
+```powershell
+winget-install
+```
 
 ## Available Scripts
 
--   **winget-install.ps1**
-
-    -   Unsigned script in the repo, signed script in releases
+- **winget-install.ps1**
+	- Unsigned script in the repo, signed script in releases
 
 ## Troubleshooting
 
--   If you receive an error message about the Appx module not being loaded, try using a different version of PowerShell (version 6 and 7 seem to be buggy still, but the native PowerShell version in Windows works)
+- If you receive an error message about the Appx module not being loaded, try using a different version of PowerShell (version 6 and 7 seem to be buggy still, but the native PowerShell version in Windows works)
 - Open an issue if you run into a persistant problem.
 
 ## Contributing
