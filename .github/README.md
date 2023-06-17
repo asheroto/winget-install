@@ -1,47 +1,11 @@
-![image](https://user-images.githubusercontent.com/49938263/164990481-a82586ac-db45-42b1-b543-c3756eafe045.png)
+![image](https://github.com/asheroto/winget-installer/assets/49938263/e34c4551-291c-4862-8028-d35b4b7b0cec)
 
-# Install winget-cli from PowerShell
+# Install winget from PowerShell
 
 -   Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
 -   Works on Windows 10, Windows 11, Server 2022
 -   Does not work on Server 2019
--   Always gets the latest version of winget
-
-## How to use
-
-### Method 1 - no need to download the file because it connects to PSGallery to fetch it
-
--   In PowerShell, type `Install-Script -Name winget-install` and answer yes to any prompts
-
--   Then type `winget-install`
-
-### Tip - how to trust PSGallery
-
-If you want to trust PSGallery so you aren't prompted each time you run this command, you can type...
-
-`Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted`
-
-### Method 2 - download file locally and run
-
--   Download `winget-install.ps1` or `winget-install-signed.zip` (and extract the inner PS1 script)
-
--   Run the script with `.\winget-install.ps1`
-
-## Available Scripts
-
--   **winget-install.ps1**
-
-    -   Unsigned script
-
--   **winget-install-signed.zip**
-
-    -   Signed script
-
-    -   Compressed for transport and to retain signature
-
-    -   Uncompress to use
-
-    -   For use if you do not want to enable unsigned script execution in PowerShell
+-   Always gets the latest version of `winget`
 
 ## Script Functionality
 
@@ -61,6 +25,38 @@ If you want to trust PSGallery so you aren't prompted each time you run this com
 
 -   Grabs the latest version of winget on each run
 
-## Note
+## Installation
+
+### Method 1 - PowerShell Gallery
+
+-   In PowerShell, type
+```
+Install-Script winget-install
+```
+- answer **Yes** to all prompts if asked
+
+### Tip - How to trust PSGallery
+
+If you want to trust PSGallery so you aren't prompted each time you run this command, you can type...
+
+`Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted`
+
+### Method 2 - Download Locally and Run
+
+-   Download `winget-install.ps1`
+
+-   Run the script with `.\winget-install.ps1`
+
+## Available Scripts
+
+-   **winget-install.ps1**
+
+    -   Unsigned script in the repo, signed script in releases
+
+## Troubleshooting
 
 -   If you receive an error message about the Appx module not being loaded, try using a different version of PowerShell (version 6 and 7 seem to be buggy still, but the native PowerShell version in Windows works)
+- Open an issue if you run into a persistant problem.
+
+## Contributing
+If you're like to help develop this project: fork the repo. 😊
