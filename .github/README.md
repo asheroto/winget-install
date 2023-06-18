@@ -7,10 +7,11 @@
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/asheroto)
 # Install winget from PowerShell
 
--   Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
--   Works on Windows 10, Windows 11, Server 2022
--   Does not work on Server 2019
--   Always gets the latest version of `winget`
+- Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
+- Always gets the latest version of `winget`
+- Works on Windows 10, Windows 11, Server 2022
+- WinGet (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
+- Does not work on Server 2019
 
 ## Script Functionality
 
