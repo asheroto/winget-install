@@ -201,10 +201,10 @@ try {
 	Write-Output ""
 
 	# Download XAML nupkg and extract appx file
-	Write-Section("Downloading Xaml nupkg file...")
-	$zipFile = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion.nupkg.zip"
-	Write-Output "Downloading $urlMicrosoftUIXaml`nSaving as: $zipFile`n"
 	try {
+		Write-Section("Downloading Xaml nupkg file...")
+		$zipFile = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion.nupkg.zip"
+		Write-Output "Downloading $urlMicrosoftUIXaml`nSaving as: $zipFile`n"
 		Invoke-WebRequest -Uri $urlMicrosoftUIXaml -OutFile $zipFile
 	} catch {
 		Write-Warning "Failed to download $urlMicrosoftUIXaml"
@@ -224,7 +224,13 @@ try {
 
 	# Install XAML
 	Write-Section("Installing ${arch} XAML...")
-	$XamlAppxPath = Join-Path -Path $nupkgFolder -ChildPath "tools\AppX\$arch\Release\Microsoft.UI.Xaml.$MicrosoftUIXamlVersion.appx"
+	$XamlAppxPath = Join-Path -Path $nupkgFolder -ChildPath "tools\AppX\$arch\Release"
+	Write-Output "Installing Appx Packages In: $XamlAppxPath`n"
+	# For each appx file in the folder, install it
+	Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
+		Write-Output "Installing Appx Package: $_`n"
+		Add-AppxPackageSilently $_.FullName
+	}
 	Add-AppxPackageSilently $XamlAppxPath
 
 	# Download winget
@@ -241,6 +247,7 @@ try {
 
 	# Install winget
 	Write-Section("Installing winget...")
+	Write-Output "Installing package: $wingetPath`n"
 	Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue | Out-Null
 
 	# Adding WindowsApps directory to PATH variable for current user if not already present
@@ -248,8 +255,11 @@ try {
 	$path = [Environment]::GetEnvironmentVariable("PATH", "User")
 	$WindowsAppsPath = [IO.Path]::Combine([Environment]::GetEnvironmentVariable("LOCALAPPDATA"), "Microsoft", "WindowsApps")
 	if (!$path.Contains($WindowsAppsPath)) {
+		Write-Output "Adding $WindowsAppsPath to PATH variable for current user..."
 		$path = $path + ";" + $WindowsAppsPath
 		[Environment]::SetEnvironmentVariable("PATH", $path, "User")
+	} else {
+		Write-Output "$WindowsAppsPath already present in PATH variable for current user, skipping."
 	}
 
 	# Cleanup
