@@ -21,7 +21,7 @@
 [Version 1.0.0] - Major refactor code, see release notes for more information.
 [Version 1.0.1] - Fixed minor bug where version 2.8 was hardcoded in URL.
 [Version 1.0.2] - Hardcoded UI Xaml version 2.8.4 as a failsafe in case the API fails. Added CheckForUpdates, Version, Help functions. Various bug fixes.
-[Version 1.0.3] - Added error message to catch block.
+[Version 1.0.3] - Added error message to catch block. Fixed bug where appx package was not being installed.
 
 #>
 
