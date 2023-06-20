@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.2
+.VERSION 1.0.3
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -20,7 +20,8 @@
 [Version 0.0.5] - Updated version number of dependencies.
 [Version 1.0.0] - Major refactor code, see release notes for more information.
 [Version 1.0.1] - Fixed minor bug where version 2.8 was hardcoded in URL.
-[Version 1.0.2] - Hardcoded UI Xaml version 2.8.4 as a failsafe in case the API fails. Improved CheckForUpdates function by converting time to local time and switching to variables. Various bug fixes.
+[Version 1.0.2] - Hardcoded UI Xaml version 2.8.4 as a failsafe in case the API fails. Added CheckForUpdates, Version, Help functions. Various bug fixes.
+[Version 1.0.3] - Added error message to catch block.
 
 #>
 
@@ -32,7 +33,7 @@
 .EXAMPLE
     Install-Winget
 .NOTES
-    Version      : 1.0.2
+    Version      : 1.0.3
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-installer
@@ -45,7 +46,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '1.0.2'
+$CurrentVersion = '1.0.3'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-installer'
 
@@ -266,4 +267,6 @@ try {
 	Write-Output ""
 } catch {
 	Write-Output "Something went wrong. Please try again or open an issue at https://github.com/asheroto/winget-install/issues"
+	Write-Output "Line number: $($_.InvocationInfo.ScriptLineNumber)"
+	Write-Output "Error: $($_.Exception.Message)"
 }
