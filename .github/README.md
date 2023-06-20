@@ -42,6 +42,8 @@ Install-Script winget-install -Force
 - answer **Yes** to all prompts if asked
 **Note:** `-Force` is optional, but it will force the script to update if it is outdated.
 
+The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
+
 ### Tip - How to trust PSGallery
 
 If you want to trust PSGallery so you aren't prompted each time you run this command, you can type...
