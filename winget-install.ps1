@@ -33,7 +33,7 @@
 .EXAMPLE
 	Install-Winget
 .NOTES
-	Version	  : 1.0.3
+	Version      : 1.0.3
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-installer
@@ -92,7 +92,7 @@ function Get-GitHubRelease {
 		$PublishedLocalDateTime = $UtcDateTime.ToLocalTime()
 
 		[PSCustomObject]@{
-			LatestVersion	 = $latestVersion
+			LatestVersion     = $latestVersion
 			PublishedDateTime = $PublishedLocalDateTime
 		}
 	} catch {
@@ -307,6 +307,5 @@ try {
 } catch {
 	Write-Warning "Something went wrong. Please try again or open an issue at https://github.com/asheroto/winget-install/issues"
 	Write-Warning "Line number  : $($_.InvocationInfo.ScriptLineNumber)"
-	Write-Warning "Error message:"
-	$_.Exception
+	Write-Warning "Error: $($_.Exception.Message)"
 }
