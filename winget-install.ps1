@@ -27,18 +27,18 @@
 
 <#
 .SYNOPSIS
-    Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
+	Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
 .DESCRIPTION
-    Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
+	Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
 .EXAMPLE
-    Install-Winget
+	Install-Winget
 .NOTES
-    Version      : 1.0.3
-    Created by   : asheroto
+	Version	  : 1.0.3
+	Created by   : asheroto
 .LINK
-    Project Site: https://github.com/asheroto/winget-installer
+	Project Site: https://github.com/asheroto/winget-installer
 #>
-
+[CmdletBinding()]
 param (
 	[switch]$Version,
 	[switch]$Help,
@@ -66,7 +66,15 @@ if ($Help) {
 	exit 0
 }
 
+# If people run "winget-install -Verbose",
+# output their PS and Host info.
+if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
+	$PSVersionTable
+	Get-Host
+}
+
 function Get-GitHubRelease {
+	[CmdletBinding()]
 	param (
 		[string]$Owner,
 		[string]$Repo
@@ -84,7 +92,7 @@ function Get-GitHubRelease {
 		$PublishedLocalDateTime = $UtcDateTime.ToLocalTime()
 
 		[PSCustomObject]@{
-			LatestVersion     = $latestVersion
+			LatestVersion	 = $latestVersion
 			PublishedDateTime = $PublishedLocalDateTime
 		}
 	} catch {
@@ -115,6 +123,7 @@ if ($CheckForUpdates) {
 
 # Get latest version of Microsoft.UI.Xaml
 function Get-LatestMicrosoftUIXamlVersion {
+	[CmdletBinding()]
 	# Get latest version from API
 	$url = "https://api.nuget.org/v3-flatcontainer/Microsoft.UI.Xaml/index.json"
 
@@ -154,28 +163,30 @@ $MicrosoftUIXamlVersion = Get-LatestMicrosoftUIXamlVersion
 # KEEP THIS HERE AFTER $MicrosoftUIXamlVersion
 # URLs
 $urlMicrosoftUIXaml = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/$MicrosoftUIXamlVersion"
-$urlVCLibsx64 = "https://aka.ms/Microsoft.VCLibs.x64.$VCLibsVersion.Desktop.appx"
-$urlVCLibsx86 = "https://aka.ms/Microsoft.VCLibs.x86.$VCLibsVersion.Desktop.appx"
+
+$urlVCLibsx64       = "https://aka.ms/Microsoft.VCLibs.x64.$VCLibsVersion.Desktop.appx"
+$urlVCLibsx86       = "https://aka.ms/Microsoft.VCLibs.x86.$VCLibsVersion.Desktop.appx"
 
 # Adding AppxPackage and silently continue on error
 function Add-AppxPackageSilently($pkg) {
 	<#
-        .SYNOPSIS
-        Adds an AppxPackage to the system and silently continues on error.
-        .EXAMPLE
-        PS C:\> Add-AppxPackageSilently("https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx")
-    #>
+		.SYNOPSIS
+		Adds an AppxPackage to the system and silently continues on error.
+		.EXAMPLE
+		PS C:\> Add-AppxPackageSilently("https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx")
+	#>
 	Add-AppxPackage $pkg -ErrorAction SilentlyContinue
 }
 
 # Generates a section divider for easy reading of the output.
 function Write-Section($text) {
 	<#
-        .SYNOPSIS
-        Prints a section divider for easy reading of the output.
-        .EXAMPLE
-        PS C:\> Write-Section("Downloading Files...")
-    #>
+		.SYNOPSIS
+		Prints a section divider for easy reading of the output.
+		.EXAMPLE
+		PS C:\> Write-Section("Downloading Files...")
+	#>
+	Write-Host ""
 	Write-Host ("#" * ($text.Length + 4))
 	Write-Host "# $text #"
 	Write-Host ("#" * ($text.Length + 4))
@@ -184,15 +195,16 @@ function Write-Section($text) {
 
 function Get-NewestLink($match) {
 	<#
-    .SYNOPSIS
-        This function fetches the newest link for a specified match from the GitHub API.
-    .EXAMPLE
-        Get-NewestLink("msixbundle")
-    #>
+	.SYNOPSIS
+		This function fetches the newest link for a specified match from the GitHub API.
+	.EXAMPLE
+		Get-NewestLink("msixbundle")
+	#>
+	[CmdletBinding()]
 	$uri = "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
 	Write-Verbose "[$((Get-Date).TimeofDay)] Getting information from $uri"
 	$get = Invoke-RestMethod -uri $uri -Method Get -ErrorAction stop
-	Write-Verbose "[$((Get-Date).TimeofDay)] getting latest release"
+	Write-Verbose "[$((Get-Date).TimeofDay)] Getting latest release..."
 	$data = $get.assets | Where-Object name -Match $match
 	return $data.browser_download_url
 }
@@ -204,26 +216,24 @@ $tempFolder = [System.IO.Path]::GetTempPath()
 $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
 
 try {
-	# Spacer
-	Write-Host ""
 
 	# Download XAML nupkg and extract appx file
 	try {
 		Write-Section("Downloading Xaml nupkg file...")
+		Write-Host "Downloading: $urlMicrosoftUIXaml"
 		$zipFile = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion.nupkg.zip"
-		Write-Host "Downloading $urlMicrosoftUIXaml"
-		Write-Host "Saving as: $zipFile`n"
+		Write-Host "Saving as  : $zipFile`n"
 		Invoke-WebRequest -Uri $urlMicrosoftUIXaml -OutFile $zipFile
 	} catch {
 		Write-Warning "Failed to download $urlMicrosoftUIXaml"
 		Write-Warning "Will try again using hardcoded version 2.8.4 (known good)..."
-		Write-Warning "Downloading $urlMicrosoftUIXaml"
-		Write-Warning "Saving as: $zipFile`n"
+		Write-Warning "Downloading: $urlMicrosoftUIXaml"
+		Write-Warning "Saving as  : $zipFile"
 		$DownloadURL = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.4"
 		Invoke-WebRequest -Uri $DownloadURL -OutFile $zipFile
 	}
 	$nupkgFolder = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion"
-	Write-Host "Expanding: $zipFile`nInto: $nupkgFolder`n"
+	Write-Host "Expand into: $nupkgFolder"
 	Expand-Archive -Path $zipFile -DestinationPath $nupkgFolder -Force
 
 	# Install VCLibs
@@ -234,36 +244,36 @@ try {
 	# Install XAML
 	Write-Section("Installing ${arch} XAML...")
 	$XamlAppxPath = Join-Path -Path $nupkgFolder -ChildPath "tools\AppX\$arch\Release"
-	Write-Host "Installing Appx Packages In: $XamlAppxPath`n"
+	Write-Host "Installing Appx Packages In: $XamlAppxPath"
 	
-    # For each appx file in the folder, install it
+	# For each appx file in the folder, install it
 	Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
-		Write-Host "Installing Appx Package: $_`n"
+		Write-Host "`nInstalling Appx Package: $_"
 		Add-AppxPackageSilently $_.FullName
-    }
+	}
 	Add-AppxPackageSilently $XamlAppxPath
 
 	# Download winget
 	Write-Section("Downloading winget...")
-
-	Write-Host "Retrieving download URL for winget from GitHub...`n"
+	
+	Write-Host "Retrieving download URL for winget from GitHub..."
 	$wingetUrl = Get-NewestLink("msixbundle")
 	$wingetPath = Join-Path -Path $tempFolder -ChildPath "winget.msixbundle"
 	$wingetLicenseUrl = Get-NewestLink("License1.xml")
 	$wingetLicensePath = Join-Path -Path $tempFolder -ChildPath "license1.xml"
 
-	Write-Host "Downloading $wingetUrl"
-	Write-Host "Saving as $wingetPath`n"
+	Write-Host "`nDownloading: $wingetUrl"
+	Write-Host "Saving as  : $wingetPath`n"
 	Invoke-WebRequest -Uri $wingetUrl -OutFile $wingetPath
 
-	Write-Host "Downloading $wingetLicenseUrl"
-	Write-Host "Saving as: $wingetLicensePath`n"
+	Write-Host "`nDownloading: $wingetLicenseUrl"
+	Write-Host "Saving as  : $wingetLicensePath`n"
 	Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
 
 	# Install winget
 	Write-Section("Installing winget...")
 
-	Write-Host "wingetPath: $wingetPath"
+	Write-Host "wingetPath       : $wingetPath"
 	Write-Host "wingetLicensePath: $wingetLicensePath`n"
 	Add-AppxProvisionedPackage `
 		-Online `
@@ -294,11 +304,9 @@ try {
 	# Finished
 	Write-Section("Installation complete!")
 	Write-Section("Please restart your computer to complete the installation.")
-
-	# Spacer
-	Write-Host ""
 } catch {
 	Write-Warning "Something went wrong. Please try again or open an issue at https://github.com/asheroto/winget-install/issues"
-	Write-Warning "Line number: $($_.InvocationInfo.ScriptLineNumber)"
-	Write-Warning "Error: $($_.Exception.Message)"
+	Write-Warning "Line number  : $($_.InvocationInfo.ScriptLineNumber)"
+	Write-Warning "Error message:"
+	$_.Exception
 }
