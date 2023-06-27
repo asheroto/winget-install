@@ -4,7 +4,7 @@
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
-.AUTHOR asherto, 1ckov, MisterZeus
+.AUTHOR asheroto, 1ckov, MisterZeus
 
 .COMPANYNAME asheroto
 
@@ -106,17 +106,17 @@ if ($CheckForUpdates) {
 	$Data = Get-GitHubRelease -Owner $RepoOwner -Repo $RepoName
 
 	if ($Data.LatestVersion -gt $CurrentVersion) {
-		Write-Host "A new version of $RepoName is available."
-		Write-Host "Current version: $CurrentVersion."
-		Write-Host "Latest  version: $($Data.LatestVersion)."
-		Write-Host "Published at: $($Data.PublishedDateTime)."
-		Write-Host "You can download the latest version from https://github.com/$RepoOwner/$RepoName/releases"
+		Write-Output "A new version of $RepoName is available."
+		Write-Output "Current version: $CurrentVersion."
+		Write-Output "Latest  version: $($Data.LatestVersion)."
+		Write-Output "Published at: $($Data.PublishedDateTime)."
+		Write-Output "You can download the latest version from https://github.com/$RepoOwner/$RepoName/releases"
 	} else {
-		Write-Host "$RepoName is up to date."
-		Write-Host "Current version: $CurrentVersion."
-		Write-Host "Latest  version: $($Data.LatestVersion)."
-		Write-Host "Published at: $($Data.PublishedDateTime)."
-		Write-Host "Repository: https://github.com/$RepoOwner/$RepoName/releases"
+		Write-Output "$RepoName is up to date."
+		Write-Output "Current version: $CurrentVersion."
+		Write-Output "Latest  version: $($Data.LatestVersion)."
+		Write-Output "Published at: $($Data.PublishedDateTime)."
+		Write-Output "Repository: https://github.com/$RepoOwner/$RepoName/releases"
 	}
 	exit 0
 }
@@ -186,11 +186,11 @@ function Write-Section($text) {
 		.EXAMPLE
 		PS C:\> Write-Section("Downloading Files...")
 	#>
-	Write-Host ""
-	Write-Host ("#" * ($text.Length + 4))
-	Write-Host "# $text #"
-	Write-Host ("#" * ($text.Length + 4))
-	Write-Host ""
+	Write-Output ""
+	Write-Output ("#" * ($text.Length + 4))
+	Write-Output "# $text #"
+	Write-Output ("#" * ($text.Length + 4))
+	Write-Output ""
 }
 
 function Get-NewestLink($match) {
@@ -220,9 +220,9 @@ try {
 	# Download XAML nupkg and extract appx file
 	try {
 		Write-Section("Downloading Xaml nupkg file...")
-		Write-Host "Downloading: $urlMicrosoftUIXaml"
+		Write-Output "Downloading: $urlMicrosoftUIXaml"
 		$zipFile = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion.nupkg.zip"
-		Write-Host "Saving as  : $zipFile`n"
+		Write-Output "Saving as  : $zipFile`n"
 		Invoke-WebRequest -Uri $urlMicrosoftUIXaml -OutFile $zipFile
 	} catch {
 		Write-Warning "Failed to download $urlMicrosoftUIXaml"
@@ -233,7 +233,7 @@ try {
 		Invoke-WebRequest -Uri $DownloadURL -OutFile $zipFile
 	}
 	$nupkgFolder = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion"
-	Write-Host "Expand into: $nupkgFolder"
+	Write-Output "Expand into: $nupkgFolder"
 	Expand-Archive -Path $zipFile -DestinationPath $nupkgFolder -Force
 
 	# Install VCLibs
@@ -244,11 +244,11 @@ try {
 	# Install XAML
 	Write-Section("Installing ${arch} XAML...")
 	$XamlAppxPath = Join-Path -Path $nupkgFolder -ChildPath "tools\AppX\$arch\Release"
-	Write-Host "Installing Appx Packages In: $XamlAppxPath"
+	Write-Output "Installing Appx Packages In: $XamlAppxPath"
 	
 	# For each appx file in the folder, install it
 	Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
-		Write-Host "`nInstalling Appx Package: $_"
+		Write-Output "`nInstalling Appx Package: $_"
 		Add-AppxPackageSilently $_.FullName
 	}
 	Add-AppxPackageSilently $XamlAppxPath
@@ -256,25 +256,25 @@ try {
 	# Download winget
 	Write-Section("Downloading winget...")
 	
-	Write-Host "Retrieving download URL for winget from GitHub..."
+	Write-Output "Retrieving download URL for winget from GitHub..."
 	$wingetUrl = Get-NewestLink("msixbundle")
 	$wingetPath = Join-Path -Path $tempFolder -ChildPath "winget.msixbundle"
 	$wingetLicenseUrl = Get-NewestLink("License1.xml")
 	$wingetLicensePath = Join-Path -Path $tempFolder -ChildPath "license1.xml"
 
-	Write-Host "`nDownloading: $wingetUrl"
-	Write-Host "Saving as  : $wingetPath`n"
+	Write-Output "`nDownloading: $wingetUrl"
+	Write-Output "Saving as  : $wingetPath`n"
 	Invoke-WebRequest -Uri $wingetUrl -OutFile $wingetPath
 
-	Write-Host "`nDownloading: $wingetLicenseUrl"
-	Write-Host "Saving as  : $wingetLicensePath`n"
+	Write-Output "`nDownloading: $wingetLicenseUrl"
+	Write-Output "Saving as  : $wingetLicensePath`n"
 	Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
 
 	# Install winget
 	Write-Section("Installing winget...")
 
-	Write-Host "wingetPath       : $wingetPath"
-	Write-Host "wingetLicensePath: $wingetLicensePath`n"
+	Write-Output "wingetPath       : $wingetPath"
+	Write-Output "wingetLicensePath: $wingetLicensePath`n"
 	Add-AppxProvisionedPackage `
 		-Online `
 		-PackagePath $wingetPath `
@@ -287,11 +287,11 @@ try {
 	$path = [Environment]::GetEnvironmentVariable("PATH", "User")
 	$WindowsAppsPath = [IO.Path]::Combine([Environment]::GetEnvironmentVariable("LOCALAPPDATA"), "Microsoft", "WindowsApps")
 	if (!$path.Contains($WindowsAppsPath)) {
-		Write-Host "Adding $WindowsAppsPath to PATH variable for current user..."
+		Write-Output "Adding $WindowsAppsPath to PATH variable for current user..."
 		$path = $path + ";" + $WindowsAppsPath
 		[Environment]::SetEnvironmentVariable("PATH", $path, "User")
 	} else {
-		Write-Host "$WindowsAppsPath already present in PATH variable for current user, skipping."
+		Write-Output "$WindowsAppsPath already present in PATH variable for current user, skipping."
 	}
 
 	# Cleanup
