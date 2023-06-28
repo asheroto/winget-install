@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.3
+.VERSION 1.0.4
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -34,7 +34,7 @@
 .EXAMPLE
 	Install-Winget
 .NOTES
-	Version      : 1.0.3
+	Version      : 1.0.4
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-installer
@@ -47,7 +47,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '1.0.3'
+$CurrentVersion = '1.0.4'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-installer'
 
