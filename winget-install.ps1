@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.3
+.VERSION 1.0.4
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -20,8 +20,9 @@
 [Version 0.0.5] - Updated version number of dependencies.
 [Version 1.0.0] - Major refactor code, see release notes for more information.
 [Version 1.0.1] - Fixed minor bug where version 2.8 was hardcoded in URL.
-[Version 1.0.2] - Hardcoded UI Xaml version 2.8.4 as a failsafe in case the API fails. Added CheckForUpdates, Version, Help functions. Various bug fixes.
+[Version 1.0.2] - Hardcoded UI Xaml version 2.8.4 as a failsafe in case the API fails. Added CheckForUpdate, Version, Help functions. Various bug fixes.
 [Version 1.0.3] - Added error message to catch block. Fixed bug where appx package was not being installed.
+[Version 1.0.4] - Changed CheckForUpdates to CheckForUpdate.
 
 #>
 
@@ -33,7 +34,7 @@
 .EXAMPLE
     Install-Winget
 .NOTES
-    Version      : 1.0.3
+    Version      : 1.0.4
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-installer
@@ -42,11 +43,11 @@
 param (
 	[switch]$Version,
 	[switch]$Help,
-	[switch]$CheckForUpdates
+	[switch]$CheckForUpdate
 )
 
 # Version
-$CurrentVersion = '1.0.3'
+$CurrentVersion = '1.0.4'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-installer'
 
@@ -94,7 +95,7 @@ function Check-GitHubRelease {
 }
 
 # Check for updates
-if ($CheckForUpdates) {
+if ($CheckForUpdate) {
 	$Data = Check-GitHubRelease -Owner $RepoOwner -Repo $RepoName
 
 	if ($Data.LatestVersion -gt $CurrentVersion) {
