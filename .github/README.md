@@ -15,7 +15,7 @@
 
 ## Script Functionality
 
--   Latest version of [Microsoft.UI.Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is downloaded and installed.
+-   The latest version of [Microsoft.UI.Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is downloaded and installed. Note that for some reason, the NuGet API doesn't always work. If this happens, the script will use the hardcoded version.
 
 -   [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) and [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) are installed first
 
