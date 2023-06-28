@@ -1,10 +1,10 @@
 <#PSScriptInfo
 
-.VERSION 1.0.4
+.VERSION 1.0.3
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
-.AUTHOR asherto, 1ckov
+.AUTHOR asheroto, 1ckov, MisterZeus
 
 .COMPANYNAME asheroto
 
@@ -20,34 +20,33 @@
 [Version 0.0.5] - Updated version number of dependencies.
 [Version 1.0.0] - Major refactor code, see release notes for more information.
 [Version 1.0.1] - Fixed minor bug where version 2.8 was hardcoded in URL.
-[Version 1.0.2] - Hardcoded UI Xaml version 2.8.4 as a failsafe in case the API fails. Added CheckForUpdate, Version, Help functions. Various bug fixes.
+[Version 1.0.2] - Hardcoded UI Xaml version 2.8.4 as a failsafe in case the API fails. Added CheckForUpdates, Version, Help functions. Various bug fixes.
 [Version 1.0.3] - Added error message to catch block. Fixed bug where appx package was not being installed.
-[Version 1.0.4] - Changed CheckForUpdates to CheckForUpdate.
 
 #>
 
 <#
 .SYNOPSIS
-    Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
+	Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
 .DESCRIPTION
-    Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
+	Downloads the latest version of Winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
 .EXAMPLE
-    Install-Winget
+	Install-Winget
 .NOTES
-    Version      : 1.0.4
-    Created by   : asheroto
+	Version      : 1.0.3
+	Created by   : asheroto
 .LINK
-    Project Site: https://github.com/asheroto/winget-installer
+	Project Site: https://github.com/asheroto/winget-installer
 #>
-
+[CmdletBinding()]
 param (
 	[switch]$Version,
 	[switch]$Help,
-	[switch]$CheckForUpdate
+	[switch]$CheckForUpdates
 )
 
 # Version
-$CurrentVersion = '1.0.4'
+$CurrentVersion = '1.0.3'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-installer'
 
@@ -67,7 +66,15 @@ if ($Help) {
 	exit 0
 }
 
-function Check-GitHubRelease {
+# If people run "winget-install -Verbose",
+# output their PS and Host info.
+if ($PSCmdlet.MyInvocation.BoundParameters["Verbose"].IsPresent) {
+	$PSVersionTable
+	Get-Host
+}
+
+function Get-GitHubRelease {
+	[CmdletBinding()]
 	param (
 		[string]$Owner,
 		[string]$Repo
@@ -89,27 +96,34 @@ function Check-GitHubRelease {
 			PublishedDateTime = $PublishedLocalDateTime
 		}
 	} catch {
-		Write-Error "Unable to check for updates. Error: $_"
+		Write-Error "Unable to check for updates.`nError: $_"
 		exit 1
 	}
 }
 
 # Check for updates
-if ($CheckForUpdate) {
-	$Data = Check-GitHubRelease -Owner $RepoOwner -Repo $RepoName
+if ($CheckForUpdates) {
+	$Data = Get-GitHubRelease -Owner $RepoOwner -Repo $RepoName
 
 	if ($Data.LatestVersion -gt $CurrentVersion) {
-		Write-Output "A new version of $RepoName is available.`nCurrent version: $CurrentVersion. Latest version: $($Data.LatestVersion). Published at: $($Data.PublishedDateTime)."
+		Write-Output "A new version of $RepoName is available."
+		Write-Output "Current version: $CurrentVersion."
+		Write-Output "Latest  version: $($Data.LatestVersion)."
+		Write-Output "Published at: $($Data.PublishedDateTime)."
 		Write-Output "You can download the latest version from https://github.com/$RepoOwner/$RepoName/releases"
 	} else {
-		Write-Output "$RepoName is up to date.`nCurrent version: $CurrentVersion. Latest version: $($Data.LatestVersion). Published at: $($Data.PublishedDateTime)."
-		Write-OUtput "Repository: https://github.com/$RepoOwner/$RepoName/releases"
+		Write-Output "$RepoName is up to date."
+		Write-Output "Current version: $CurrentVersion."
+		Write-Output "Latest  version: $($Data.LatestVersion)."
+		Write-Output "Published at: $($Data.PublishedDateTime)."
+		Write-Output "Repository: https://github.com/$RepoOwner/$RepoName/releases"
 	}
 	exit 0
 }
 
 # Get latest version of Microsoft.UI.Xaml
 function Get-LatestMicrosoftUIXamlVersion {
+	[CmdletBinding()]
 	# Get latest version from API
 	$url = "https://api.nuget.org/v3-flatcontainer/Microsoft.UI.Xaml/index.json"
 
@@ -134,8 +148,9 @@ function Get-LatestMicrosoftUIXamlVersion {
 		# Get the latest version
 		$latestVersion = $sortedVersions[0]
 	} catch {
-		# If the API fails, use the hardcoded version
 		$latestVersion = "2.8.4"
+		Write-Warning "Failed getting latest Microsoft.UI.Xaml version from API $url"
+		Write-Warning "Using the hardcoded version $latestVersion"
 	}
 
 	return $latestVersion
@@ -148,45 +163,48 @@ $MicrosoftUIXamlVersion = Get-LatestMicrosoftUIXamlVersion
 # KEEP THIS HERE AFTER $MicrosoftUIXamlVersion
 # URLs
 $urlMicrosoftUIXaml = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/$MicrosoftUIXamlVersion"
+
 $urlVCLibsx64 = "https://aka.ms/Microsoft.VCLibs.x64.$VCLibsVersion.Desktop.appx"
 $urlVCLibsx86 = "https://aka.ms/Microsoft.VCLibs.x86.$VCLibsVersion.Desktop.appx"
 
 # Adding AppxPackage and silently continue on error
 function Add-AppxPackageSilently($pkg) {
 	<#
-        .SYNOPSIS
-        Adds an AppxPackage to the system and silently continues on error.
-        .EXAMPLE
-        PS C:\> Add-AppxPackageSilently("https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx")
-    #>
+		.SYNOPSIS
+		Adds an AppxPackage to the system and silently continues on error.
+		.EXAMPLE
+		PS C:\> Add-AppxPackageSilently("https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx")
+	#>
 	Add-AppxPackage $pkg -ErrorAction SilentlyContinue
 }
 
 # Generates a section divider for easy reading of the output.
 function Write-Section($text) {
 	<#
-        .SYNOPSIS
-        Prints a section divider for easy reading of the output.
-        .EXAMPLE
-        PS C:\> Write-Section("Downloading Files...")
-    #>
-	Write-Output ("#" * 50)
-	Write-Output "# $text"
-	Write-Output ("#" * 50)
+		.SYNOPSIS
+		Prints a section divider for easy reading of the output.
+		.EXAMPLE
+		PS C:\> Write-Section("Downloading Files...")
+	#>
+	Write-Output ""
+	Write-Output ("#" * ($text.Length + 4))
+	Write-Output "# $text #"
+	Write-Output ("#" * ($text.Length + 4))
 	Write-Output ""
 }
 
 function Get-NewestLink($match) {
 	<#
-    .SYNOPSIS
-        This function fetches the newest link for a specified match from the GitHub API.
-    .EXAMPLE
-        Get-NewestLink("msixbundle")
-    #>
+	.SYNOPSIS
+		This function fetches the newest link for a specified match from the GitHub API.
+	.EXAMPLE
+		Get-NewestLink("msixbundle")
+	#>
+	[CmdletBinding()]
 	$uri = "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
 	Write-Verbose "[$((Get-Date).TimeofDay)] Getting information from $uri"
 	$get = Invoke-RestMethod -uri $uri -Method Get -ErrorAction stop
-	Write-Verbose "[$((Get-Date).TimeofDay)] getting latest release"
+	Write-Verbose "[$((Get-Date).TimeofDay)] Getting latest release..."
 	$data = $get.assets | Where-Object name -Match $match
 	return $data.browser_download_url
 }
@@ -198,24 +216,24 @@ $tempFolder = [System.IO.Path]::GetTempPath()
 $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
 
 try {
-	# Spacer
-	Write-Output ""
 
 	# Download XAML nupkg and extract appx file
 	try {
 		Write-Section("Downloading Xaml nupkg file...")
+		Write-Output "Downloading: $urlMicrosoftUIXaml"
 		$zipFile = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion.nupkg.zip"
-		Write-Output "Downloading $urlMicrosoftUIXaml`nSaving as: $zipFile`n"
+		Write-Output "Saving as  : $zipFile`n"
 		Invoke-WebRequest -Uri $urlMicrosoftUIXaml -OutFile $zipFile
 	} catch {
 		Write-Warning "Failed to download $urlMicrosoftUIXaml"
 		Write-Warning "Will try again using hardcoded version 2.8.4 (known good)..."
-		Write-Output "Downloading:`n$urlMicrosoftUIXaml`nSaving as: $zipFile`n"
+		Write-Warning "Downloading: $urlMicrosoftUIXaml"
+		Write-Warning "Saving as  : $zipFile"
 		$DownloadURL = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.4"
 		Invoke-WebRequest -Uri $DownloadURL -OutFile $zipFile
 	}
 	$nupkgFolder = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$MicrosoftUIXamlVersion"
-	Write-Output "Expanding: $zipFile`nInto: $nupkgFolder`n"
+	Write-Output "Expand into: $nupkgFolder"
 	Expand-Archive -Path $zipFile -DestinationPath $nupkgFolder -Force
 
 	# Install VCLibs
@@ -226,30 +244,43 @@ try {
 	# Install XAML
 	Write-Section("Installing ${arch} XAML...")
 	$XamlAppxPath = Join-Path -Path $nupkgFolder -ChildPath "tools\AppX\$arch\Release"
-	Write-Output "Installing Appx Packages In: $XamlAppxPath`n"
+	Write-Output "Installing Appx Packages In: $XamlAppxPath"
+
 	# For each appx file in the folder, install it
 	Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
-		Write-Output "Installing Appx Package: $_`n"
+		Write-Output "`nInstalling Appx Package: $_"
 		Add-AppxPackageSilently $_.FullName
 	}
 	Add-AppxPackageSilently $XamlAppxPath
 
 	# Download winget
-	Write-Output "Retrieving download URL for winget from GitHub...`n"
+	Write-Section("Downloading winget...")
+
+	Write-Output "Retrieving download URL for winget from GitHub..."
 	$wingetUrl = Get-NewestLink("msixbundle")
 	$wingetPath = Join-Path -Path $tempFolder -ChildPath "winget.msixbundle"
 	$wingetLicenseUrl = Get-NewestLink("License1.xml")
 	$wingetLicensePath = Join-Path -Path $tempFolder -ChildPath "license1.xml"
-	Write-Section("Downloading winget...")
-	Write-Output "Downloading:`n$wingetUrl`nSaving as: $wingetPath`n"
+
+	Write-Output "`nDownloading: $wingetUrl"
+	Write-Output "Saving as  : $wingetPath`n"
 	Invoke-WebRequest -Uri $wingetUrl -OutFile $wingetPath
-	Write-Output "Downloading:`n$wingetLicenseUrl`nSaving as: $wingetLicensePath`n"
+
+	Write-Output "`nDownloading: $wingetLicenseUrl"
+	Write-Output "Saving as  : $wingetLicensePath`n"
 	Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
 
 	# Install winget
 	Write-Section("Installing winget...")
-	Write-Output "Installing package: $wingetPath`n"
-	Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue | Out-Null
+
+	Write-Output "wingetPath       : $wingetPath"
+	Write-Output "wingetLicensePath: $wingetLicensePath`n"
+	Add-AppxProvisionedPackage `
+		-Online `
+		-PackagePath $wingetPath `
+		-LicensePath $wingetLicensePath `
+		-ErrorAction SilentlyContinue `
+	| Out-Null
 
 	# Adding WindowsApps directory to PATH variable for current user if not already present
 	Write-Section("Checking and adding WindowsApps directory to PATH variable for current user if not present...")
@@ -273,11 +304,8 @@ try {
 	# Finished
 	Write-Section("Installation complete!")
 	Write-Section("Please restart your computer to complete the installation.")
-
-	# Spacer
-	Write-Output ""
 } catch {
-	Write-Output "Something went wrong. Please try again or open an issue at https://github.com/asheroto/winget-install/issues"
-	Write-Output "Line number: $($_.InvocationInfo.ScriptLineNumber)"
-	Write-Output "Error: $($_.Exception.Message)"
+	Write-Warning "Something went wrong. Please try again or open an issue at https://github.com/asheroto/winget-install/issues"
+	Write-Warning "Line number  : $($_.InvocationInfo.ScriptLineNumber)"
+	Write-Warning "Error: $($_.Exception.Message)"
 }
