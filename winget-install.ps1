@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 2.0.0
+.VERSION 2.0.2
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -10,7 +10,7 @@
 
 .TAGS PowerShell Windows winget win get install installer fix script
 
-.PROJECTURI https://github.com/asheroto/winget-installer
+.PROJECTURI https://github.com/asheroto/winget-install
 
 .RELEASENOTES
 [Version 0.0.1] - Initial Release.
@@ -24,6 +24,8 @@
 [Version 1.0.3] - Added error message to catch block. Fixed bug where appx package was not being installed.
 [Version 1.0.4] - MisterZeus optimized code for readability.
 [Version 2.0.0] - Major refactor. Reverted to UI.Xaml 2.7.3 for stability. Adjusted script to fix install issues due to winget changes (thank you ChrisTitusTech). Added in all architecture support.
+[Version 2.0.1] - Renamed repo and URL references from winget-installer to winget-install. Added extra space after the last line of output.
+[Version 2.0.2] - Adjusted CheckForUpdates to include Install-Script instructions and extra spacing.
 
 #>
 
@@ -43,10 +45,10 @@
 .PARAMETER CheckForUpdate
     Checks for updates of the script.
 .NOTES
-	Version      : 2.0.0
+	Version      : 2.0.2
 	Created by   : asheroto
 .LINK
-	Project Site: https://github.com/asheroto/winget-installer
+	Project Site: https://github.com/asheroto/winget-install
 #>
 [CmdletBinding()]
 param (
@@ -56,9 +58,9 @@ param (
 )
 
 # Version
-$CurrentVersion = '2.0.0'
+$CurrentVersion = '2.0.2'
 $RepoOwner = 'asheroto'
-$RepoName = 'winget-installer'
+$RepoName = 'winget-install'
 
 # Versions
 $ProgressPreference = 'SilentlyContinue' # Suppress progress bar (makes downloading super fast)
@@ -96,8 +98,8 @@ function Get-GitHubRelease {
         The name of the repository.
 
         .EXAMPLE
-        Get-GitHubRelease -Owner "asheroto" -Repo "winget-installer"
-        This command retrieves the latest release version and published datetime of the winget-installer repository owned by asheroto.
+        Get-GitHubRelease -Owner "asheroto" -Repo "winget-install"
+        This command retrieves the latest release version and published datetime of the winget-install repository owned by asheroto.
     #>
     [CmdletBinding()]
     param (
@@ -269,17 +271,19 @@ if ($CheckForUpdates) {
     $Data = Get-GitHubRelease -Owner $RepoOwner -Repo $RepoName
 
     if ($Data.LatestVersion -gt $CurrentVersion) {
-        Write-Output "A new version of $RepoName is available."
+        Write-Output "`nA new version of $RepoName is available.`n"
         Write-Output "Current version: $CurrentVersion."
-        Write-Output "Latest  version: $($Data.LatestVersion)."
-        Write-Output "Published at: $($Data.PublishedDateTime)."
-        Write-Output "You can download the latest version from https://github.com/$RepoOwner/$RepoName/releases"
+        Write-Output "Latest version: $($Data.LatestVersion)."
+        Write-Output "Published at: $($Data.PublishedDateTime).`n"
+        Write-Output "You can download the latest version from https://github.com/$RepoOwner/$RepoName/releases`n"
+        Write-Output "Or you can run the following command to update:"
+        Write-Output "Install-Script winget-install -Force`n"
     } else {
-        Write-Output "$RepoName is up to date."
+        Write-Output "`n$RepoName is up to date.`n"
         Write-Output "Current version: $CurrentVersion."
-        Write-Output "Latest  version: $($Data.LatestVersion)."
+        Write-Output "Latest version: $($Data.LatestVersion)."
         Write-Output "Published at: $($Data.PublishedDateTime)."
-        Write-Output "Repository: https://github.com/$RepoOwner/$RepoName/releases"
+        Write-Output "`nRepository: https://github.com/$RepoOwner/$RepoName/releases`n"
     }
     exit 0
 }
@@ -464,7 +468,7 @@ try {
     ########################
 
     Write-Section "Installation complete!"
-    Write-Output "If winget doesn't work right now, you may need to restart your computer."
+    Write-Output "If winget doesn't work right now, you may need to restart your computer.`n"
 } catch {
     ########################
     # Error handling
