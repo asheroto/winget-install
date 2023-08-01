@@ -477,7 +477,7 @@ try {
     Write-Section "WARNING! An error occurred during installation!"
 
     Write-Warning "Something went wrong. If messages above don't help and the problem persists,"
-    Write-Warning "Please open an issue at https://github.com/$RepoOwner/$RepoName/issues"
+    Write-Warning "Please open an issue at https://github.com/$RepoOwner/$RepoName/issues`n"
 
     # If it's not 0x80073D02 (resources in use), show error
     if ($_.Exception.Message -notmatch '0x80073D02') {
