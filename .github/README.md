@@ -1,4 +1,3 @@
-
 ![image](https://github.com/asheroto/winget-installer/assets/49938263/21e65c6d-9132-465d-a05d-158ce9972bf3)
 
 [![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-installer)](https://github.com/asheroto/winget-installer/releases)
@@ -6,30 +5,20 @@
 [![GitHub Sponsor](https://img.shields.io/github/sponsors/asheroto?label=Sponsor&logo=GitHub)](https://github.com/sponsors/asheroto)
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/asheroto)
 # Install winget from PowerShell
-
 - Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
 - Always gets the latest version of `winget`
 - Works on Windows 10, Windows 11, Server 2022
 - WinGet (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
-- Does not work on Server 2019
+- Does **not** work on Server 2019
 
 ## Script Functionality
-
--   The latest version of [Microsoft.UI.Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is downloaded and installed. Note that for some reason, the NuGet API doesn't always work. If this happens, the script will use the hardcoded version.
-
--   [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) and [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) are installed first
-
--   Processor architecture is determined for prerequisites
-
--   [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) is installed straight from the appx package
-
--   [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
-
--   [winget-cli](https://github.com/microsoft/winget-cli) is then installed
-
--   User **PATH** variable is adjusted to include WindowsApps folder
-
--   Grabs the latest version of winget on each run
+- Processor architecture is determined for prerequisites (x86/x64 or arm/arm64)
+- [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
+  - Uses version 2.7.3 for compatibility reasons
+- [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) is installed straight from the appx package
+  - Uses version 14.00 for compatibility reasons
+- [winget-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
+- Machine & User **PATH** variables are adjusted to include WindowsApps folder if needed
 
 ## Setup
 
@@ -72,7 +61,7 @@ winget-install
 
 ## Troubleshooting
 
-- If you receive an error message about the Appx module not being loaded, try using a different version of PowerShell (version 6 and 7 seem to be buggy still, but the native PowerShell version in Windows works)
+- If you run into an issue, please ensure your system is compatible & fully updated
 - Open an issue if you run into a persistant problem.
 
 ## Contributing
