@@ -62,8 +62,9 @@ winget-install
 
 ## Troubleshooting
 
-- If you run into an issue, please ensure your system is compatible & fully updated
+- If you run into an issue, please ensure your system is compatible & fully updated.
 - Open an issue if you run into a persistant problem.
+- I am working on an alternate version that will provide a backup method of installing winget. If you have trouble installing winget with this script, try [this version](https://github.com/asheroto/winget-install/blob/Alternate-Method/winget-install.ps1) which is not officially published yet.
 
 ## Contributing
 If you're like to help develop this project: fork the repo. 😊
