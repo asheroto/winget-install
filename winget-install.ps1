@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 2.0.2
+.VERSION 2.1.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -8,7 +8,7 @@
 
 .COMPANYNAME asheroto
 
-.TAGS PowerShell Windows winget win get install installer fix script
+.TAGS PowerShell Windows winget win get install installer fix script setup
 
 .PROJECTURI https://github.com/asheroto/winget-install
 
@@ -26,6 +26,7 @@
 [Version 2.0.0] - Major refactor. Reverted to UI.Xaml 2.7.3 for stability. Adjusted script to fix install issues due to winget changes (thank you ChrisTitusTech). Added in all architecture support.
 [Version 2.0.1] - Renamed repo and URL references from winget-installer to winget-install. Added extra space after the last line of output.
 [Version 2.0.2] - Adjusted CheckForUpdates to include Install-Script instructions and extra spacing.
+[Version 2.1.0] - Added alternate method/URL for dependencies in case the main URL is down. Fixed licensing issue when winget is installed on Server 2022.
 
 #>
 
@@ -45,7 +46,7 @@
 .PARAMETER CheckForUpdate
     Checks for updates of the script.
 .NOTES
-	Version      : 2.0.2
+	Version      : 2.1.0
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -58,7 +59,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '2.0.2'
+$CurrentVersion = '2.1.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 
@@ -257,6 +258,11 @@ function Handle-Error {
         Write-Warning "Resources modified are in-use. Try closing Windows Terminal / PowerShell / Command Prompt and try again."
         Write-Warning "If the problem persists, restart your computer."
         return $ErrorRecord
+    } elseif ($ErrorRecord.Exception.Message -match 'Unable to connect to the remote server') {
+        Write-Warning "Cannot connect to the Internet to download the required files."
+        Write-Warning "Try running the script again and make sure you are connected to the Internet."
+        Write-Warning "Sometimes the nuget.org server is down, so you may need to try again later."
+        return $ErrorRecord
     } else {
         # For other errors, we should stop the execution and return the ErrorRecord so that the calling try/catch block throws the error
         return $ErrorRecord
@@ -315,7 +321,6 @@ try {
     }
 
     # Output
-    Write-Section "Downloading & installing ${arch} VCLibs..."
     switch ($cpuArchitecture) {
         0 { $arch = "x86" }
         9 { $arch = "x64" }
@@ -343,12 +348,22 @@ try {
     try {
         # Add-AppxPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
         Add-AppxPackage $vcLibs.url -ErrorAction Stop
+        Write-Output "VCLibs installed successfully."
     } catch {
-        $errorHandled = Handle-Error $_
-        if ($null -ne $errorHandled) {
-            throw $errorHandled
+        # Alternate method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
+        # This method is not preferred as it is not the official way to download, but it is a good fallback
+        try {
+            Write-Warning "Error when trying to download or install VCLibs. Trying alternate method..."
+            $vcLibs.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00_.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+            Add-AppxPackage $vcLibs.url -ErrorAction Stop
+            Write-Output "VCLibs installed successfully."
+        } catch {
+            $errorHandled = Handle-Error $_
+            if ($null -ne $errorHandled) {
+                throw $errorHandled
+            }
+            $errorHandled = $null
         }
-        $errorHandled = $null
     }
 
     ########################
@@ -371,35 +386,52 @@ try {
     Write-Output "Downloading: $($uiXaml.url)"
     Write-Output "Saving as: $($uiXaml.nupkgFilename)"
 
-    # Downloads from URL, saves as nupkg
-    Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
+    # Download UI.Xaml nupkg and extract the appx file from it, then install it
+    try {
+        Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
 
-    # Extracts the nupkg file
-    Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
-    Add-Type -Assembly System.IO.Compression.FileSystem
+        # Extracts the nupkg file
+        Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
+        Add-Type -Assembly System.IO.Compression.FileSystem
 
-    # Extracts the nupkg file
-    Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
-    Add-Type -Assembly System.IO.Compression.FileSystem
-    # Check if folder exists and delete if needed
-    if (Test-Path -Path $uiXaml.nupkgFolder) {
-        Remove-Item -Path $uiXaml.nupkgFolder -Recurse
-    }
-    [IO.Compression.ZipFile]::ExtractToDirectory($uiXaml.nupkgFilename, $uiXaml.nupkgFolder)
+        # Extracts the nupkg file
+        Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
+        Add-Type -Assembly System.IO.Compression.FileSystem
+        # Check if folder exists and delete if needed
+        if (Test-Path -Path $uiXaml.nupkgFolder) {
+            Remove-Item -Path $uiXaml.nupkgFolder -Recurse
+        }
+        [IO.Compression.ZipFile]::ExtractToDirectory($uiXaml.nupkgFilename, $uiXaml.nupkgFolder)
 
-    # Install XAML
-    Write-Output "Installing ${arch} XAML..."
-    $XamlAppxFolder = Join-Path -Path $uiXaml.nupkgFolder -ChildPath $uiXaml.appxFolder
-    $XamlAppxPath = Join-Path -Path $XamlAppxFolder -ChildPath $uiXaml.appxFilename
-    Write-Output "Installing Appx Packages in: $XamlAppxFolder"
+        # Install XAML
+        Write-Output "Installing ${arch} XAML..."
+        $XamlAppxFolder = Join-Path -Path $uiXaml.nupkgFolder -ChildPath $uiXaml.appxFolder
+        $XamlAppxPath = Join-Path -Path $XamlAppxFolder -ChildPath $uiXaml.appxFilename
+        Write-Output "Installing Appx Packages in: $XamlAppxFolder"
 
-    # For each appx file in the folder, try to install it
-    Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
+        # For each appx file in the folder, try to install it
+        Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
+            try {
+                Write-Output "Installing Appx Package: $($_.Name)"
+                # Add-AppxPackage will throw an error if the app is already installed
+                # or a higher version is installed, so we need to catch it and continue
+                Add-AppxPackage $_.FullName -ErrorAction Stop
+            } catch {
+                $errorHandled = Handle-Error $_
+                if ($null -ne $errorHandled) {
+                    throw $errorHandled
+                }
+                $errorHandled = $null
+            }
+        }
+    } catch {
+        # Alternate method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
+        # This method is not preferred as it is not the official way to download, but it is a good fallback
         try {
-            Write-Output "Installing Appx Package: $($_.Name)"
-            # Add-AppxPackage will throw an error if the app is already installed
-            # or a higher version is installed, so we need to catch it and continue
-            Add-AppxPackage $_.FullName -ErrorAction Stop
+            Write-Warning "Error when trying to download or install UI.Xaml. Trying alternate method..."
+            $uiXaml.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=ProductId&url=9P5VK8KZB5QZ&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.UI.Xaml.2.7.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+            Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
+            Add-AppxPackage $uiXaml.nupkgFilename -ErrorAction Stop
         } catch {
             $errorHandled = Handle-Error $_
             if ($null -ne $errorHandled) {
@@ -439,7 +471,7 @@ try {
     # Try to install winget
     try {
         # Add-AppxPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
-        Add-AppxPackage -Path $wingetPath -ErrorAction SilentlyContinue
+        Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
