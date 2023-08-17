@@ -387,10 +387,6 @@ try {
     # Vars
     $vcLibsVersion = "14.00"
 
-    $vcLibs = @{
-        url = "https://aka.ms/Microsoft.VCLibs.$arch.$($vcLibsVersion).Desktop.appx"
-    }
-
     # Output
     Write-Section "Downloading & installing ${arch} VCLibs..."
 
@@ -398,15 +394,30 @@ try {
     try {
         # Primary method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
         $vcLibs.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00_.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+
+        # If the URL is empty, try the alternate method
+        if ($vcLibs.url -eq "") {
+            throw "URL is empty"
+        }
+
         Write-Output "URL: $($vcLibs.url)"
         Add-AppxPackage $vcLibs.url -ErrorAction Stop
         Write-Output "`nVCLibs installed successfully."
     } catch {
         # Alternate method - this is less reliable as it relies on the aka.ms URL, which seems to have issues sometimes, but in case the primary method fails, we can try this
         try {
+            $vcLibs = @{
+                url = "https://aka.ms/Microsoft.VCLibs.$arch.$($vcLibsVersion).Desktop.appx"
+            }
+
             Write-Output ""
             Write-Warning "Error when trying to download or install VCLibs. Trying alternate method..."
             Write-Output ""
+
+            # If the URL is empty, throw error
+            if ($vcLibs.url -eq "") {
+                throw "URL is empty"
+            }
 
             Write-Output "URL: $($vcLibs.url)"
             Add-AppxPackage $vcLibs.url -ErrorAction Stop
@@ -428,7 +439,6 @@ try {
     $uiXamlNupkgVersion = "2.7.3"
     $uiXamlAppxFileVersion = "2.7"
     $uiXaml = @{
-        url           = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/$uiXamlNupkgVersion"
         appxFolder    = "tools/AppX/$arch/Release/"
         appxFilename  = "Microsoft.UI.Xaml.$uiXamlAppxFileVersion.appx"
         nupkgFilename = Join-Path -Path $tempFolder -ChildPath "Microsoft.UI.Xaml.$uiXamlNupkgVersion.nupkg"
@@ -442,18 +452,31 @@ try {
     try {
         # Primary method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
         $uiXaml.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=ProductId&url=9P5VK8KZB5QZ&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.UI.Xaml.2.7.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+
+        # If the URL is empty, try the alternate method
+        if ($uiXaml.url -eq "") {
+            throw "URL is empty"
+        }
+
         Write-Output "Downloading: $($uiXaml.url)"
         Add-AppxPackage $uiXaml.url -ErrorAction Stop
         Write-Output "`nUI.Xaml installed successfully."
     } catch {
         # Alternate method - this is less reliable as it relies on nuget.org, which seems to have issues sometimes, but in case the primary method fails, we can try this
         try {
+            $uiXaml.url = "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/$uiXamlNupkgVersion"
+
             Write-Output ""
             Write-Warning "Error when trying to download or install UI.Xaml. Trying alternate method..."
             Write-Output ""
 
             Write-Output "Downloading: $($uiXaml.url)"
             Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
+
+            # If the URL is empty, throw error
+            if ($uiXaml.url -eq "") {
+                throw "URL is empty"
+            }
 
             # Extracts the nupkg file
             Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
