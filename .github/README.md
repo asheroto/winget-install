@@ -63,7 +63,7 @@ winget-install
 ## Troubleshooting
 
 - If you run into an issue, please ensure your system is compatible & fully updated
-- Please try installing winget [manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists there
+- Please try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists there
 - If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues)
 - Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md)
 - If the problem only occurs when using this script, please open an issue here
