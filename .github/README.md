@@ -39,6 +39,8 @@
 
 ### Method 1 - PowerShell Gallery
 
+**Note:** please use the latest version using Install-Script or the PS1 file from Releases, the version on GitHub itself may be under development and not work properly.
+
 -   In PowerShell, type
 
 ```powershell
