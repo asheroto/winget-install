@@ -1,4 +1,4 @@
-![winget1](https://github.com/asheroto/winget-install/assets/49938263/fd67266c-43db-4fbe-9a47-66063e6b751b)
+![winget1](https://github.com/asheroto/winget-install/assets/49938263/dc5d2e94-aa1d-4160-9141-21704ed172f6)
 
 [![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-installer)](https://github.com/asheroto/winget-installer/releases)
 [![GitHub Downloads - All Releases](https://img.shields.io/github/downloads/asheroto/winget-installer/total)](https://github.com/asheroto/winget-installer/releases)
