@@ -9,8 +9,9 @@
 - Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
 - Always gets the latest version of `winget`
 - Works on Windows 10, Windows 11, Server 2022
-- WinGet (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
+- winget (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
 - Does **not** work on Server 2019
+- [Check Windows Version](ms-settings:about)
 
 ## Script Functionality
 - Processor architecture is determined for prerequisites (x86/x64 or arm/arm64)
@@ -63,11 +64,10 @@ winget-install
 ## Troubleshooting
 
 - If you run into an issue, please ensure your system is compatible & fully updated
-- Please try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists there
+- Please try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
 - If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues)
 - Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md)
 - If the problem only occurs when using this script, please open an issue here
-- Open an issue if you run into a persistant problem
 
 ## Contributing
 If you're like to help develop this project: fork the repo. 😊
