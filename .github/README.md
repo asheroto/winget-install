@@ -11,7 +11,7 @@
 - Works on Windows 10, Windows 11, Server 2022
 - winget (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
 - Does **not** work on Server 2019
-- [Check Windows Version](ms-settings:about)
+- <a href="ms-settings:about">Check Windows Version</a>
 
 ## Script Functionality
 - Processor architecture is determined for prerequisites (x86/x64 or arm/arm64)
