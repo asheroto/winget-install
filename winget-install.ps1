@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 2.1.0
+.VERSION 2.1.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -27,6 +27,7 @@
 [Version 2.0.1] - Renamed repo and URL references from winget-installer to winget-install. Added extra space after the last line of output.
 [Version 2.0.2] - Adjusted CheckForUpdates to include Install-Script instructions and extra spacing.
 [Version 2.1.0] - Added alternate method/URL for dependencies in case the main URL is down. Fixed licensing issue when winget is installed on Server 2022.
+[Version 2.1.1] - Switched primary/alternate methods. Added Cleanup function to avoid errors when cleaning up temp files. Added output of URL for alternate method. Suppressed Add-AppxProvisionedPackage output. Improved success message. Improved verbiage.
 
 #>
 
@@ -46,7 +47,7 @@
 .PARAMETER CheckForUpdate
     Checks for updates of the script.
 .NOTES
-	Version      : 2.1.0
+	Version      : 2.1.1
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -59,7 +60,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '2.1.0'
+$CurrentVersion = '2.1.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 
@@ -272,6 +273,52 @@ function Handle-Error {
     $ErrorActionPreference = $OriginalErrorActionPreference
 }
 
+function Cleanup {
+    <#
+        .SYNOPSIS
+            Deletes a file or directory specified without prompting for confirmation or displaying errors.
+
+        .DESCRIPTION
+            This function takes a path to a file or directory and deletes it without prompting for confirmation or displaying errors.
+            If the path is a directory, the function will delete the directory and all its contents.
+
+        .PARAMETER Path
+            The path of the file or directory to be deleted.
+
+        .PARAMETER Recurse
+            If the path is a directory, this switch specifies whether to delete the directory and all its contents.
+
+        .EXAMPLE
+            Cleanup -Path "C:\Temp"
+            This example deletes the directory "C:\Temp" and all its contents.
+
+        .EXAMPLE
+            Cleanup -Path "C:\Temp" -Recurse
+            This example deletes the directory "C:\Temp" and all its contents.
+
+        .EXAMPLE
+            Cleanup -Path "C:\Temp\file.txt"
+            This example deletes the file "C:\Temp\file.txt".
+    #>
+    param (
+        [string]$Path,
+        [bool]$Recurse = $false
+    )
+
+    try {
+        if (Test-Path -Path $Path) {
+            if ($Recurse -and (Get-Item -Path $Path) -is [System.IO.DirectoryInfo]) {
+                Get-ChildItem -Path $Path -Recurse | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+                Remove-Item -Path $Path -Force -Recurse -ErrorAction SilentlyContinue
+            } else {
+                Remove-Item -Path $Path -Force -ErrorAction SilentlyContinue
+            }
+        }
+    } catch {
+        # Errors are ignored
+    }
+}
+
 # Check for updates
 if ($CheckForUpdates) {
     $Data = Get-GitHubRelease -Owner $RepoOwner -Repo $RepoName
@@ -342,23 +389,24 @@ try {
 
     # Output
     Write-Section "Downloading & installing ${arch} VCLibs..."
-    Write-Output "URL: $($vcLibs.url)"
 
-    # Try to install VCLibs
+    # Install
     try {
-        # Add-AppxPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
+        # Primary method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
+        $vcLibs.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00_.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+        Write-Output "URL: $($vcLibs.url)"
         Add-AppxPackage $vcLibs.url -ErrorAction Stop
-        Write-Output "VCLibs installed successfully."
+        Write-Output "`nVCLibs installed successfully."
     } catch {
-        # Alternate method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
-        # This method is not preferred as it is not the official way to download, but it is a good fallback
+        # Alternate method - this is less reliable as it relies on the aka.ms URL, which seems to have issues sometimes, but in case the primary method fails, we can try this
         try {
             Write-Output ""
             Write-Warning "Error when trying to download or install VCLibs. Trying alternate method..."
             Write-Output ""
-            $vcLibs.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00_.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+
+            Write-Output "URL: $($vcLibs.url)"
             Add-AppxPackage $vcLibs.url -ErrorAction Stop
-            Write-Output "VCLibs installed successfully."
+            Write-Output "`nVCLibs installed successfully."
         } catch {
             $errorHandled = Handle-Error $_
             if ($null -ne $errorHandled) {
@@ -385,49 +433,51 @@ try {
 
     # Output
     Write-Section "Downloading & installing ${arch} UI.Xaml..."
-    Write-Output "Downloading: $($uiXaml.url)"
-    Write-Output "Saving as: $($uiXaml.nupkgFilename)"
 
-    # Download UI.Xaml nupkg and extract the appx file from it, then install it
+    # Install
     try {
-        Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
-
-        # Extracts the nupkg file
-        Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
-        Add-Type -Assembly System.IO.Compression.FileSystem
-
-        # Extracts the nupkg file
-        Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
-        Add-Type -Assembly System.IO.Compression.FileSystem
-        # Check if folder exists and delete if needed
-        if (Test-Path -Path $uiXaml.nupkgFolder) {
-            Remove-Item -Path $uiXaml.nupkgFolder -Recurse
-        }
-        [IO.Compression.ZipFile]::ExtractToDirectory($uiXaml.nupkgFilename, $uiXaml.nupkgFolder)
-
-        # Install XAML
-        Write-Output "Installing ${arch} XAML..."
-        $XamlAppxFolder = Join-Path -Path $uiXaml.nupkgFolder -ChildPath $uiXaml.appxFolder
-        $XamlAppxPath = Join-Path -Path $XamlAppxFolder -ChildPath $uiXaml.appxFilename
-        Write-Output "Installing Appx Packages in: $XamlAppxFolder"
-
-        # For each appx file in the folder, try to install it
-        Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
-            Write-Output "Installing Appx Package: $($_.Name)"
-            # Add-AppxPackage will throw an error if the app is already installed
-            # or a higher version is installed, so we need to catch it and continue
-            Add-AppxPackage $_.FullName -ErrorAction Stop
-        }
+        # Primary method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
+        $uiXaml.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=ProductId&url=9P5VK8KZB5QZ&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.UI.Xaml.2.7.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+        Write-Output "Downloading: $($uiXaml.url)"
+        Add-AppxPackage $uiXaml.url -ErrorAction Stop
+        Write-Output "`nUI.Xaml installed successfully."
     } catch {
-        # Alternate method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
-        # This method is not preferred as it is not the official way to download, but it is a good fallback
+        # Alternate method - this is less reliable as it relies on nuget.org, which seems to have issues sometimes, but in case the primary method fails, we can try this
         try {
             Write-Output ""
             Write-Warning "Error when trying to download or install UI.Xaml. Trying alternate method..."
             Write-Output ""
-            $uiXaml.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=ProductId&url=9P5VK8KZB5QZ&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.UI.Xaml.2.7.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
+
+            Write-Output "Downloading: $($uiXaml.url)"
             Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
-            Add-AppxPackage $uiXaml.nupkgFilename -ErrorAction Stop
+
+            # Extracts the nupkg file
+            Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
+            Add-Type -Assembly System.IO.Compression.FileSystem
+
+            # Extracts the nupkg file
+            Write-Output "Extracting into: $($uiXaml.nupkgFolder)`n"
+            Add-Type -Assembly System.IO.Compression.FileSystem
+            # Check if folder exists and delete if needed
+            if (Test-Path -Path $uiXaml.nupkgFolder) {
+                Remove-Item -Path $uiXaml.nupkgFolder -Recurse
+            }
+            [IO.Compression.ZipFile]::ExtractToDirectory($uiXaml.nupkgFilename, $uiXaml.nupkgFolder)
+
+            # Install XAML
+            Write-Output "Installing ${arch} UI.Xaml..."
+            $XamlAppxFolder = Join-Path -Path $uiXaml.nupkgFolder -ChildPath $uiXaml.appxFolder
+            $XamlAppxPath = Join-Path -Path $XamlAppxFolder -ChildPath $uiXaml.appxFilename
+            Write-Output "Installing Appx Packages in: $XamlAppxFolder"
+
+            # For each appx file in the folder, try to install it
+            Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
+                Write-Output "Installing appx Package: $($_.Name)"
+                # Add-AppxPackage will throw an error if the app is already installed
+                # or a higher version is installed, so we need to catch it and continue
+                Add-AppxPackage $_.FullName -ErrorAction Stop
+            }
+            Write-Output "`nUI.Xaml installed successfully."
         } catch {
             $errorHandled = Handle-Error $_
             if ($null -ne $errorHandled) {
@@ -441,8 +491,8 @@ try {
     # winget
     ########################
 
-    # Download winget
-    Write-Section "Downloading winget..."
+    # Output
+    Write-Section "Downloading & installing ${arch} winget..."
 
     Write-Output "Retrieving download URL for winget from GitHub..."
     $wingetUrl = Get-NewestLink("msixbundle")
@@ -458,16 +508,15 @@ try {
     Write-Output "Saving as: $wingetLicensePath"
     Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
 
-    # Install winget
-    Write-Section "Installing winget..."
-
-    Write-Output "wingetPath: $wingetPath"
-    Write-Output "wingetLicensePath: $wingetLicensePath"
+    # Keep for debugging
+    # Write-Output "wingetPath: $wingetPath"
+    # Write-Output "wingetLicensePath: $wingetLicensePath"
 
     # Try to install winget
     try {
         # Add-AppxPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
-        Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue
+        Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue | Out-Null
+        Write-Output "`nwinget installed successfully."
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
@@ -485,18 +534,20 @@ try {
     # Cleanup
     ########################
 
-    Write-Section "Cleaning up..."
-    Remove-Item -Path $uiXaml.nupkgFilename
-    Remove-Item -Path $uiXaml.nupkgFolder -Recurse
-    Remove-Item -Path $wingetPath
-    Remove-Item -Path $wingetLicensePath
+    Write-Section "Cleanup"
+    Write-Output "Cleaning up..."
+    Cleanup -Path $uiXaml.nupkgFilename
+    Cleanup -Path $uiXaml.nupkgFolder -Recurse $true
+    Cleanup -Path $wingetPath
+    Cleanup -Path $wingetLicensePath
+    Write-Output "Done"
 
     ########################
     # Finished
     ########################
-
     Write-Section "Installation complete!"
-    Write-Output "If winget doesn't work right now, you may need to restart your computer.`n"
+    Write-Output "Try using 'winget' now. If the command isn't recognized, restart your computer.`n"
+
 } catch {
     ########################
     # Error handling

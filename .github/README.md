@@ -1,5 +1,4 @@
-![winget1](https://github.com/asheroto/winget-install/assets/49938263/d71ba39a-1799-4306-bc37-a980241a4f32)
-![winget2](https://github.com/asheroto/winget-install/assets/49938263/8658cddb-864d-462b-bb75-bf4c06cc625c)
+![winget1](https://github.com/asheroto/winget-install/assets/49938263/fd67266c-43db-4fbe-9a47-66063e6b751b)
 
 [![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-installer)](https://github.com/asheroto/winget-installer/releases)
 [![GitHub Downloads - All Releases](https://img.shields.io/github/downloads/asheroto/winget-installer/total)](https://github.com/asheroto/winget-installer/releases)
@@ -13,11 +12,23 @@
 - Does **not** work on Server 2019
 
 ## Script Functionality
-- Processor architecture is determined for prerequisites (x86/x64 or arm/arm64)
-- [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
-  - Uses version 2.7.3 for compatibility reasons
+- Processor architecture determined for prerequisites (x86/x64 or arm/arm64)
 - [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) is installed straight from the appx package
-  - Uses version 14.00 for compatibility reasons
+  - Primary method
+    - Uses version 14.00 for compatibility reasons
+    - Installs **appx** package using aka.ms URL
+  - Alternate method (if primary download URL fails)
+    - Determines the direct download URL for the **appx** package
+    - Installs **appx** package using direct download URL
+- [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed
+  - Primary method
+    - Uses version 2.7.3 for compatibility reasons
+    - Downloads **nupkg** package using nuget.org URL
+    - Extracts **appx** package from **nupkg** package
+    - Installs **appx** package using extracted **appx** package
+  - Alternate method (if primary download URL fails)
+    - Determines the direct download URL for the **appx** package
+    - Installs **appx** package using direct download URL
 - [winget-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
 - Machine & User **PATH** variables are adjusted to include WindowsApps folder if needed
 
