@@ -353,7 +353,9 @@ try {
         # Alternate method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
         # This method is not preferred as it is not the official way to download, but it is a good fallback
         try {
+            Write-Output ""
             Write-Warning "Error when trying to download or install VCLibs. Trying alternate method..."
+            Write-Output ""
             $vcLibs.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00_.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
             Add-AppxPackage $vcLibs.url -ErrorAction Stop
             Write-Output "VCLibs installed successfully."
@@ -411,24 +413,18 @@ try {
 
         # For each appx file in the folder, try to install it
         Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
-            try {
-                Write-Output "Installing Appx Package: $($_.Name)"
-                # Add-AppxPackage will throw an error if the app is already installed
-                # or a higher version is installed, so we need to catch it and continue
-                Add-AppxPackage $_.FullName -ErrorAction Stop
-            } catch {
-                $errorHandled = Handle-Error $_
-                if ($null -ne $errorHandled) {
-                    throw $errorHandled
-                }
-                $errorHandled = $null
-            }
+            Write-Output "Installing Appx Package: $($_.Name)"
+            # Add-AppxPackage will throw an error if the app is already installed
+            # or a higher version is installed, so we need to catch it and continue
+            Add-AppxPackage $_.FullName -ErrorAction Stop
         }
     } catch {
         # Alternate method - store.rg-adguard.net parses the Microsoft Store API response and returns the direct download URL
         # This method is not preferred as it is not the official way to download, but it is a good fallback
         try {
+            Write-Output ""
             Write-Warning "Error when trying to download or install UI.Xaml. Trying alternate method..."
+            Write-Output ""
             $uiXaml.url = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=ProductId&url=9P5VK8KZB5QZ&ring=RP&lang=en-US" -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "Microsoft.UI.Xaml.2.7.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
             Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
             Add-AppxPackage $uiXaml.nupkgFilename -ErrorAction Stop
