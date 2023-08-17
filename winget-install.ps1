@@ -26,7 +26,7 @@
 [Version 2.0.0] - Major refactor. Reverted to UI.Xaml 2.7.3 for stability. Adjusted script to fix install issues due to winget changes (thank you ChrisTitusTech). Added in all architecture support.
 [Version 2.0.1] - Renamed repo and URL references from winget-installer to winget-install. Added extra space after the last line of output.
 [Version 2.0.2] - Adjusted CheckForUpdates to include Install-Script instructions and extra spacing.
-[Version 2.1.0] - Added alternate method/URL for dependencies in case the main URL is down.
+[Version 2.1.0] - Added alternate method/URL for dependencies in case the main URL is down. Fixed licensing issue when winget is installed on Server 2022.
 
 #>
 
@@ -471,7 +471,7 @@ try {
     # Try to install winget
     try {
         # Add-AppxPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
-        Add-AppxPackage -Path $wingetPath -ErrorAction SilentlyContinue
+        Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {

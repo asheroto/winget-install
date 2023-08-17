@@ -62,7 +62,7 @@ winget-install
 
 ## Troubleshooting
 
-- If you run into an issue, please ensure your system is compatible & fully updated
+- If you run into an issue, please ensure your system is compatible & fully updated.
 - Open an issue if you run into a persistant problem.
 
 ## Contributing
