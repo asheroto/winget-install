@@ -27,17 +27,19 @@
 [Version 2.0.1] - Renamed repo and URL references from winget-installer to winget-install. Added extra space after the last line of output.
 [Version 2.0.2] - Adjusted CheckForUpdates to include Install-Script instructions and extra spacing.
 [Version 2.1.0] - Added alternate method/URL for dependencies in case the main URL is down. Fixed licensing issue when winget is installed on Server 2022.
-[Version 2.1.1] - Switched primary/alternate methods. Added Cleanup function to avoid errors when cleaning up temp files. Added output of URL for alternate method. Suppressed Add-AppxProvisionedPackage output. Improved success message. Improved verbiage.
+[Version 2.1.1] - Switched primary/alternate methods. Added Cleanup function to avoid errors when cleaning up temp files. Added output of URL for alternate method. Suppressed Add-AppxProvisionedPackage output. Improved success message. Improved verbiage. Improve PS script comments.
 
 #>
 
 <#
 .SYNOPSIS
-	Downloads the latest version of winget, its dependencies, and installs everything. PATH variable is adjusted after installation. Reboot required after installation.
+	Downloads and installs the latest version of winget and its dependencies. Updates the PATH variable if needed.
 .DESCRIPTION
-	The Install-winget function automates the process of installing the winget package manager. It downloads the latest version of winget and its required dependencies from the source. After downloading, the function installs winget and updates the PATH environment variable to include directories necessary for winget's operation.
+	Downloads and installs the latest version of winget and its dependencies. Updates the PATH variable if needed.
 
-    This function is designed to be straightforward and easy to use, removing the hassle of manually downloading, installing, and configuring winget. To make the newly installed winget available for use, a system reboot may be required after the execution of this function. This function should be run with administrative privileges.
+This script is designed to be straightforward and easy to use, removing the hassle of manually downloading, installing, and configuring winget. To make the newly installed winget available for use, a system reboot may be required after running the script.
+
+This function should be run with administrative privileges.
 .EXAMPLE
 	winget-install
 .PARAMETER Version
@@ -136,7 +138,8 @@ function Write-Section($text) {
         Prints a text block surrounded by a section divider for enhanced output readability.
 
         .DESCRIPTION
-        This function takes a string input and prints it to the console, surrounded by a section divider made of hash characters. It is designed to enhance the readability of console output.
+        This function takes a string input and prints it to the console, surrounded by a section divider made of hash characters.
+        It is designed to enhance the readability of console output.
 
         .PARAMETER text
         The text to be printed within the section divider.
@@ -158,7 +161,8 @@ function Get-NewestLink($match) {
         Retrieves the download URL of the latest release asset that matches a specified pattern from the GitHub repository.
 
         .DESCRIPTION
-        This function uses the GitHub API to get information about the latest release of the winget-cli repository. It then retrieves the download URL for the release asset that matches a specified pattern.
+        This function uses the GitHub API to get information about the latest release of the winget-cli repository.
+        It then retrieves the download URL for the release asset that matches a specified pattern.
 
         .PARAMETER match
         The pattern to match in the asset names.
