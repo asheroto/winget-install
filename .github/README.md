@@ -12,6 +12,8 @@
 - WinGet (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
 - Does **not** work on Server 2019
 
+Major changes coming in version 3, expected to be released by 2023-08-23.
+
 ## Script Functionality
 - Processor architecture is determined for prerequisites (x86/x64 or arm/arm64)
 - [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed by downloading the **nupkg**, extracting it, and installing the **appx** package
