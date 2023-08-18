@@ -62,11 +62,18 @@ winget-install
 - **winget-install.ps1**
 	- Unsigned script in the repo, signed script in releases
 
+
 ## Troubleshooting
 
-- If you run into an issue, please ensure your system is compatible & fully updated.
-- Open an issue if you run into a persistant problem.
-- I am working on an alternate version that will provide a backup method of installing winget. If you have trouble installing winget with this script, try [this version](https://github.com/asheroto/winget-install/blob/Alternate-Method/winget-install.ps1) which is not officially published yet.
+-   If you run into an issue, please ensure your system is compatible & fully updated
+-   Please try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
+-   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues)
+-   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs
+-   Try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
+-   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script)
+-   Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md)
+-   If the problem only occurs when using this script, please open an issue here
+-   If the problem **only** occurs when using this script, please open an issue here
 
 ## Contributing
 If you're like to help develop this project: fork the repo. 😊
