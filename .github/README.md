@@ -7,17 +7,24 @@
 
 # Install winget from PowerShell
 
+**winget, a command line package manager, doesn't have a command line installer? 🤣 Now it does! 😊**
+
 -   Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
 -   Always gets the latest version of `winget`
 -   Works on Windows 10, Windows 11, Server 2022
 -   winget (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
 -   Does **not** work on Server 2019
+-   Script automatically determines if your OS version is compatible
+-   Script automatically determines which version of the prerequisites to install based on your OS version
 
 ## Script Functionality
 
 -   Processor architecture determined for prerequisites (x86/x64 or arm/arm64)
+-   Windows OS version determined to confirm compatibility (Windows 10, Windows 11, Server 2022)
+-   If Windows 10, release ID determined to confirm compatibility (1809 or newer)
 -   [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) is installed straight from the appx package
     -   Primary method
+        -   If Windows 10 or Server 2022, alternate method is forced so that older version of prerequisite is used
         -   Determines the direct download URL for the **appx** package
         -   Installs **appx** package using direct download URL
     -   Alternate method (if primary download URL fails)
@@ -25,6 +32,7 @@
         -   Installs **appx** package using aka.ms URL
 -   [Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed
     -   Primary method
+        -   If Windows 10 or Server 2022, alternate method is forced so that older version of prerequisite is used
         -   Determines the direct download URL for the **appx** package
         -   Installs **appx** package using direct download URL
     -   Alternate method (if primary download URL fails)
@@ -76,15 +84,17 @@ winget-install
 ## Available Scripts
 
 -   **winget-install.ps1**
-    -   Unsigned script in the repo, signed script in releases
+    -   Unsigned script in the repo but may be under development
+    -   It is recommended that you use the file in Releases or use Install-Script and do not use the file in the repo directly
 
 ## Troubleshooting
 
 -   If you run into an issue, please ensure your system is compatible & fully updated
--   Please try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
--   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues)
+-   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs
+-   Try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
+-   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script)
 -   Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md)
--   If the problem only occurs when using this script, please open an issue here
+-   If the problem **only** occurs when using this script, please open an issue here
 
 ## Contributing
 
