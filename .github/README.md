@@ -76,7 +76,7 @@ Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
 ### Method 2 - Download Locally and Run
 
--   Download `winget-install.ps1`
+-   Download the latest [winget-install.ps1](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) from [Releases](https://github.com/asheroto/winget-install/releases)
 -   Run the script with `.\winget-install.ps1`
 
 ## Usage
@@ -99,12 +99,6 @@ No parameters are required to run the script, but there are some optional parame
 | `-CheckForUpdate` | No       | Checks if there is an update available for the script.                                      |
 | `-Version`        | No       | Displays the version of the script.                                                         |
 | `-Help`           | No       | Displays the full help information for the script.                                          |
-
-## Available Scripts
-
--   **winget-install.ps1**
-    -   Unsigned script in the repo but may be under development
-    -   Please use the file in [Releases](https://github.com/asheroto/winget-install/releases) or use Install-Script, we recommend that you do not use the file in the repo directly
 
 ## Troubleshooting
 
