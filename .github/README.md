@@ -94,7 +94,7 @@ No parameters are required to run the script, but there are some optional parame
 | ----------------- | -------- | ------------------------------------------------------------------------------------------- |
 | `-DebugMode`      | No       | Enables debug mode, which shows additional information for debugging.                       |
 | `-DisableCleanup` | No       | Disables cleanup of the script and prerequisites after installation.                        |
-| `-Force`          | No       | Forces the installation of winget and its dependencies, even if they are already installed. |
+| `-Force`          | No       | Ensures installation of winget and its dependencies, even if already present.               |
 | `-CheckForUpdate` | No       | Checks if there is an update available for the script.                                      |
 | `-Version`        | No       | Displays the version of the script.                                                         |
 | `-Help`           | No       | Displays the full help information for the script.                                          |

@@ -48,7 +48,7 @@ This function should be run with administrative privileges.
 .PARAMETER DisableCleanup
     Disables cleanup of the script and prerequisites after installation.
 .PARAMETER Force
-    Forces the installation of winget and its dependencies, even if they are already installed.
+    Ensures installation of winget and its dependencies, even if already present.
 .PARAMETER CheckForUpdate
     Checks if there is an update available for the script.
 .PARAMETER Version
