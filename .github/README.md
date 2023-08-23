@@ -1,4 +1,4 @@
-![winget Windows 10](https://github.com/asheroto/winget-install/assets/49938263/fed75cf9-7f50-4453-ad90-f249f57efe0d)
+![winget Windows 10](https://github.com/asheroto/winget-install/assets/49938263/0950509d-c8f7-45d3-9967-f985f4e5cc10)
 
 [![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-installer)](https://github.com/asheroto/winget-installer/releases)
 [![GitHub Downloads - All Releases](https://img.shields.io/github/downloads/asheroto/winget-installer/total)](https://github.com/asheroto/winget-installer/releases)
