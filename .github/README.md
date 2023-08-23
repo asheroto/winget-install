@@ -67,10 +67,11 @@ The script is published on [PowerShell Gallery](https://www.powershellgallery.co
 
 ### Tip - How to trust PSGallery
 
-If you want to trust PSGallery so you aren't prompted each time you run this command, you can type...
+If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
 
 ```powershell
-Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted -Force
+Install-PackageProvider -Name "NuGet" -Force
+Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 ```
 
 ### Method 2 - Download Locally and Run
