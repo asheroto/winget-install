@@ -110,7 +110,6 @@ No parameters are required to run the script, but there are some optional parame
 -   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script)
 -   Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md)
 -   If the problem **only** occurs when using this script, please open an issue here
--   You might try to [install using Chocolatey](https://community.chocolatey.org/packages/winget/) to see if that works better for you: `choco install winget`
 
 ## Contributing
 
