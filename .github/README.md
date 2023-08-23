@@ -70,7 +70,7 @@ The script is published on [PowerShell Gallery](https://www.powershellgallery.co
 If you want to trust PSGallery so you aren't prompted each time you run this command, you can type...
 
 ```powershell
-Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted -Force
 ```
 
 ### Method 2 - Download Locally and Run
