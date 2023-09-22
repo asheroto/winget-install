@@ -53,13 +53,13 @@
 
 **Note:** please use the latest version using Install-Script or the PS1 file from Releases, the version on GitHub itself may be under development and not work properly.
 
--   In PowerShell, type
+Open PowerShell as Administrator and type
 
 ```powershell
 Install-Script winget-install -Force
 ```
 
--   answer **Yes** to all prompts if asked
+Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
 
 **Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated.
 

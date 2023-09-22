@@ -158,12 +158,13 @@ function Get-OSInfo {
         $nameValue = $osDetails.Caption
 
         # Get architecture details of the OS (not the processor)
-        $architecture = $osDetails.OSArchitecture
+        # Get only the numbers
+        $architecture = ($osDetails.OSArchitecture -replace "[^\d]").Trim()
 
         # If 32-bit or 64-bit replace with x32 and x64
-        if ($architecture -eq "32-bit") {
+        if ($architecture -eq "32") {
             $architecture = "x32"
-        } elseif ($architecture -eq "64-bit") {
+        } elseif ($architecture -eq "64") {
             $architecture = "x64"
         }
 
@@ -758,6 +759,7 @@ if ($CheckForUpdate) {
 
 # Heading
 Write-Output "winget-install $CurrentVersion"
+Write-Output "To check for updates, run winget-install -CheckForUpdate"
 
 # Set OS version
 $osVersion = Get-OSInfo
