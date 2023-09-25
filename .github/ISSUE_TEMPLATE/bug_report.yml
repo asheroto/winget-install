@@ -27,7 +27,7 @@ body:
         I have verified that I am using the latest version of winget-install.
       required: true
     - label: |
-        I have verified that this issue is NOT related to a security issue / vulnerability (please create [security advisory](https://github.com/asheroto/winget-install/security/advisories) if so).
+        I have verified that this issue is NOT security related (please create [security advisory](https://github.com/asheroto/winget-install/security/advisories) if so).
       required: true
     - label: |
         I have run the script with the `-DebugMode` argument and included the output below
