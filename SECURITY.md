@@ -11,4 +11,4 @@ The following versions are currently supported.
 
 ## Reporting a Vulnerability
 
-If you find a security issue, please create an issue.
+If you find a security issue, please create a [security advisory](https://github.com/asheroto/winget-install/security/advisories).
