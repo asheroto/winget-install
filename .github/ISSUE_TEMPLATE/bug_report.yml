@@ -18,7 +18,7 @@ body:
     label: Checklist
     description: Before continuing, make sure you have done the following.
     options:
-    - label: I have verified no other issues exist related to my problem.
+    - label: I have performed the steps in the [Troubleshooting](https://github.com/asheroto/winget-install#troubleshooting) section and confirm that the issue only occurs with this script.
       required: true
     - label: |
         I have restarted my computer to confirm this is not a transitory problem.
