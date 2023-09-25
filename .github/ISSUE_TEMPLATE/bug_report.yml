@@ -27,6 +27,9 @@ body:
         I have verified that I am using the latest version of winget-install.
       required: true
     - label: |
+        I have verified that this issue is NOT related to a security issue / vulnerability (please create [security advisory](https://github.com/asheroto/winget-install/security/advisories) if so).
+      required: true
+    - label: |
         I have run the script with the `-DebugMode` argument and included the output below
       required: true
 - type: textarea
@@ -44,7 +47,7 @@ body:
     description: |
       Please include as many details about your system as possible. Sometimes, a problem may only happen on specific systems, and this information can be vital to resolving your issue. At minimum, please include your operating system and version. You can find this under `Settings > System > About`.
     value: |-
-      **Example:** Windows 10 Pro x64 20H2
+      Example: Windows 10 Pro x64 20H2
   validations:
     required: true
 - type: textarea
