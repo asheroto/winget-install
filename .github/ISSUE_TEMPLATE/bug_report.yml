@@ -9,7 +9,7 @@ body:
     value: |
       Please check to see if your feature already exists in the [Issues](https://github.com/asheroto/winget-install).
 
-      Name your issue appropriately: give it a sentence that reads well enough for anyone seeing this in the release notes to know what it is.
+      **Name your issue appropriately:** give it a sentence that reads well enough for anyone seeing this in the release notes to know what it is.
 
       When writing out the issue details, please ensure you are writing it as if you were explaining it to somebody else, even if you will be working on and resolving the issue yourself. This helps others to understand the reasons for the issue and for it to be searchable in the future.
 - type: checkboxes
@@ -34,34 +34,7 @@ body:
   attributes:
     label: What You Are Seeing?
     description: |
-      In your own words, please describe the problem that you are
-      experiencing. Please include screenshots if possible, as this can give a
-      clearer indication of the problem.
-  validations:
-    required: true
-- type: textarea
-  id: what-is-expected
-  attributes:
-    label: What is Expected?
-    description: |
-      Instead of the behavior that you were seeing, what did you expect would
-      be happening instead?
-  validations:
-    required: true
-- type: textarea
-  id: how-did-you-get-this-to-happen
-  attributes:
-    label: How Did You Get This To Happen?
-    description: |
-      Please include a complete set of reproducible steps that another user or
-      maintainer of the repository can follow to get the same behavior that
-      you are seeing.  NOTE: We may be unable to troubleshoot/respond to
-      issues without reproducible steps. If you do not complete this section,
-      there is a high chance your issue may be closed.
-    value: |-
-      1. I ran this
-      2. I clicked on this
-      3. But it only happens with this game
+      In your own words, please describe the problem that you are experiencing. Please include screenshots if possible, as this can give a clearer indication of the problem.
   validations:
     required: true
 - type: textarea
@@ -69,10 +42,7 @@ body:
   attributes:
     label: System Details
     description: |
-      Please include as many details about your system as possible. Sometimes,
-      a problem may only happen on specific systems, and this information can
-      be vital to resolving your issue. At minimum, please include your
-      operating system and version. You can find this under `Settings > System > About`
+      Please include as many details about your system as possible. Sometimes, a problem may only happen on specific systems, and this information can be vital to resolving your issue. At minimum, please include your operating system and version. You can find this under `Settings > System > About`.
     value: |-
       - Windows 10 Pro x64 20H2
   validations:
@@ -82,9 +52,7 @@ body:
   attributes:
     label: Additional Context
     description: |
-      Please include any other information here that you feel may be relevant
-      to the problem you are seeing but is not covered in the previous
-      sections.
+      Please include any other information here that you feel may be relevant to the problem you are seeing but is not covered in the previous sections.
     value: Screenshots, etc
 - type: textarea
   id: output-with-debugmode
