@@ -60,7 +60,7 @@
 
 ## Setup
 
-**Note:** For a stable experience, use one of the methods (#1, #2, or #3) listed below to fetch the latest version. Using the version directly from the GitHub repository is **not advised**, as it could be under active development and not fully stable.
+**Note:** For a stable experience, use one of the methods listed below (#1, #2, or #3) to fetch the latest version. Using the version directly from the GitHub repository is **not advised**, as it could be under active development and not fully stable.
 
 ### Method 1 - PowerShell Gallery
 
