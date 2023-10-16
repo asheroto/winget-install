@@ -91,7 +91,7 @@ Install-PackageProvider -Name "NuGet" -Force
 Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 ```
 
-### Method 2 - One Line Command
+### Method 2 - One Line Command (Runs Immediately)
 
 The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to the [latest code-signed release](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) of the script.
 
