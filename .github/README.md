@@ -19,6 +19,7 @@
 -   If prerequisites are already installed, they will be updated to the latest version
 -   If Windows 10 or Server 2022, script will force the use of older versions of prerequisites (newer versions are not compatible)
 -   If Windows 11, script will use the latest versions of prerequisites from the Microsoft Store
+-   If Windows 10, winget registration command will be executed
 
 ## Script Functionality
 
