@@ -8,24 +8,35 @@
 
 **winget, a command line package manager, doesn't have a command line installer? 🤣 Now it does! 😊**
 
+## Requirements
+
+-   Requires PowerShell running with Administrator rights
+-   Compatible with:
+    -   Windows 10 (Version 1809 or higher)
+    -   Windows 11
+    -   Server 2022
+-   Not compatible with:
+    -   Server 2019 (winget not supported)
+
 ## Features
--   Install [winget-cli](https://github.com/microsoft/winget-cli) straight from PowerShell
--   Always gets the latest version of `winget`
--   Works on Windows 10, Windows 11, Server 2022
--   Does **not** work on Server 2019
--   winget (and therefore this script) requires "Windows 10 version 1809 or newer (LTSC included)"
--   Script automatically determines if your OS version is compatible
--   Script automatically determines which version of the prerequisites to install based on your OS version
--   If prerequisites are already installed, they will be updated to the latest version
--   If Windows 10 or Server 2022, script will force the use of older versions of prerequisites (newer versions are not compatible)
--   If Windows 11, script will use the latest versions of prerequisites from the Microsoft Store
--   If Windows 10, winget registration command will be executed
+
+-   Installs [winget-cli](https://github.com/microsoft/winget-cli) directly from PowerShell
+-   Always fetches the latest `winget` version
+-   Automatically verifies OS compatibility
+-   Determines and installs the appropriate prerequisites based on OS version
+-   Updates existing prerequisites to their latest versions
+-   Supports x86/x64 and arm/arm64 architectures
+-   Allows bypassing of existing `winget` installation verification through `$Force` session variable or `-Force` parameter
 
 ## Script Functionality
 
--   Processor architecture determined for prerequisites (x86/x64 or arm/arm64)
--   Windows OS version determined to confirm compatibility (Windows 10, Windows 11, Server 2022)
--   If Windows 10, release ID determined to confirm compatibility (1809 or newer)
+-   Identifies processor architecture to decide which prerequisites are needed (x86/x64 or arm/arm64)
+-   Checks Windows OS version for compatibility (Windows 10, Windows 11, Server 2022)
+-   Verifies Windows 10 release ID for compatibility (must be 1809 or newer)
+-   Manages prerequisite versions based on OS:
+    -   Forces older versions on Windows 10 and Server 2022
+    -   Uses latest versions from Microsoft Store on Windows 11
+-   Executes winget registration command on Windows 10
 -   [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) is installed straight from the appx package
     -   Primary method
         -   If Windows 10 or Server 2022, alternate method is forced so that older version of prerequisite is used (newer version is not compatible)
@@ -61,11 +72,17 @@ Install-Script winget-install -Force
 
 Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
 
-**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated.
+**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated. If you do not use `-Force`, it will *not* overwrite the script if outdated.
+
+#### Usage
+
+```powershell
+winget-install
+```
 
 The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
 
-### Tip - How to trust PSGallery
+#### Tip - How to trust PSGallery
 
 If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
 
@@ -74,31 +91,38 @@ Install-PackageProvider -Name "NuGet" -Force
 Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 ```
 
-### Method 2 - Download Locally and Run
+### Method 2 - One Line Command
+
+This is the fastest method, **but is not recommended** because the code that runs is not able to be viewed before running. If you're okay with that, you can run the following command in PowerShell as Administrator.
+
+```powershell
+irm asheroto.com/winget | iex
+```
+
+If PowerShell exits immediately, that means winget is already installed. You can force the script to run again by setting the session variable `$Force` to `$true` before running the command.
+
+```powershell
+$Force = $true
+irm asheroto.com/winget | iex
+```
+
+### Method 3 - Download Locally and Run
 
 -   Download the latest [winget-install.ps1](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) from [Releases](https://github.com/asheroto/winget-install/releases)
 -   Run the script with `.\winget-install.ps1`
-
-## Usage
-
-In PowerShell, type
-
-```powershell
-winget-install
-```
 
 ## Parameters
 
 No parameters are required to run the script, but there are some optional parameters to use if needed.
 
-| Parameter         | Required | Description                                                                                 |
-| ----------------- | -------- | ------------------------------------------------------------------------------------------- |
-| `-DebugMode`      | No       | Enables debug mode, which shows additional information for debugging.                       |
-| `-DisableCleanup` | No       | Disables cleanup of the script and prerequisites after installation.                        |
-| `-Force`          | No       | Ensures installation of winget and its dependencies, even if already present.               |
-| `-CheckForUpdate` | No       | Checks if there is an update available for the script.                                      |
-| `-Version`        | No       | Displays the version of the script.                                                         |
-| `-Help`           | No       | Displays the full help information for the script.                                          |
+| Parameter         | Required | Description                                                                   |
+| ----------------- | -------- | ----------------------------------------------------------------------------- |
+| `-DebugMode`      | No       | Enables debug mode, which shows additional information for debugging.         |
+| `-DisableCleanup` | No       | Disables cleanup of the script and prerequisites after installation.          |
+| `-Force`          | No       | Ensures installation of winget and its dependencies, even if already present. |
+| `-CheckForUpdate` | No       | Checks if there is an update available for the script.                        |
+| `-Version`        | No       | Displays the version of the script.                                           |
+| `-Help`           | No       | Displays the full help information for the script.                            |
 
 ## Troubleshooting
 

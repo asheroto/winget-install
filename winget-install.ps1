@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.0.2
+.VERSION 3.1.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -31,6 +31,7 @@
 [Version 3.0.0] - Major changes. Added OS version detection checks - detects OS version, release ID, ensures compatibility. Forces older file installation for Server 2022 to avoid issues after installing. Added DebugMode, DisableCleanup, Force. Renamed CheckForUpdates to CheckForUpdate. Improved output. Improved error handling. Improved comments. Improved code readability. Moved CheckForUpdate into function. Added PowerShellGalleryName. Renamed Get-OSVersion to Get-OSInfo. Moved architecture detection into Get-OSInfo. Renamed Get-NewestLink to Get-WingetDownloadUrl. Have Get-WingetDownloadUrl not get preview releases.
 [Version 3.0.1] - Updated Get-OSInfo function to fix issues when used on non-English systems. Improved error handling of "resources in use" error.
 [Version 3.0.2] - Added winget registration command for Windows 10 machines.
+[Version 3.1.0] - Added support for one-line installation with irm and iex compatible with $Force session variable. Added UpdateSelf command to automatically update the script to the latest version. Created short URL asheroto.com/winget.
 
 #>
 
@@ -51,6 +52,8 @@ This function should be run with administrative privileges.
     Disables cleanup of the script and prerequisites after installation.
 .PARAMETER Force
     Ensures installation of winget and its dependencies, even if already present.
+.PARAMETER UpdateSelf
+    Updates the script to the latest version on PSGallery.
 .PARAMETER CheckForUpdate
     Checks if there is an update available for the script.
 .PARAMETER Version
@@ -58,7 +61,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.0.2
+	Version      : 3.1.0
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -70,11 +73,12 @@ param (
     [switch]$CheckForUpdate,
     [switch]$DisableCleanup,
     [switch]$DebugMode,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$UpdateSelf
 )
 
 # Version
-$CurrentVersion = '3.0.2'
+$CurrentVersion = '3.1.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -99,6 +103,11 @@ if ($Help) {
 if ($PSBoundParameters.ContainsKey('Verbose') -and $PSBoundParameters['Verbose']) {
     $PSVersionTable
     Get-Host
+}
+
+# Check if the $Force parameter was passed in; if not, check for a session variable
+if (-not $Force -and (Get-Variable -Name 'Force' -Scope Global -ErrorAction SilentlyContinue)) {
+    $Force = $global:Force
 }
 
 function Get-TempFolder {
@@ -277,6 +286,36 @@ function CheckForUpdate {
         Write-Output "`nRepository: https://github.com/$RepoOwner/$RepoName/releases`n"
     }
     exit 0
+}
+
+function UpdateSelf {
+    try {
+        # Get PSGallery version of script
+        $psGalleryScriptVersion = (Find-Script -Name $PowerShellGalleryName).Version
+
+        # Output
+        Write-Output "Updating script to version $psGalleryScriptVersion..."
+
+        # Install NuGet PackageProvider if not already installed
+        if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
+            Install-PackageProvider -Name "NuGet" -Force
+        }
+
+        # Trust the PSGallery if not already trusted
+        $repo = Get-PSRepository -Name 'PSGallery'
+        if ($repo.InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+        }
+
+        # Update the script
+        Install-Script winget-install -Force
+
+        Write-Output "Script updated to version $psGalleryScriptVersion."
+        exit 0
+    } catch {
+        Write-Error "An error occurred while updating the script: $_"
+        exit 1
+    }
 }
 
 function Write-Section($text) {
@@ -765,6 +804,11 @@ function Install-Prerequisite {
 # Check for updates if -CheckForUpdate is specified
 if ($CheckForUpdate) {
     CheckForUpdate -RepoOwner $RepoOwner -RepoName $RepoName -CurrentVersion $CurrentVersion -PowerShellGalleryName $PowerShellGalleryName
+}
+
+# Update the script if -UpdateSelf is specified
+if ($UpdateSelf) {
+    UpdateSelf
 }
 
 # Heading
