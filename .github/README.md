@@ -64,7 +64,6 @@
 
 ### Method 1 - PowerShell Gallery
 
-
 Open PowerShell as Administrator and type
 
 ```powershell
@@ -73,7 +72,7 @@ Install-Script winget-install -Force
 
 Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
 
-**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated. If you do not use `-Force`, it will *not* overwrite the script if outdated.
+**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated. If you do not use `-Force`, it will _not_ overwrite the script if outdated.
 
 #### Usage
 
@@ -94,7 +93,7 @@ Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
 ### Method 2 - One Line Command
 
-This is the fastest method, **but is not recommended** because the code that runs is not able to be viewed before running. If you're okay with that, you can run the following command in PowerShell as Administrator.
+The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to the [latest code-signed release](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) of the script.
 
 ```powershell
 irm asheroto.com/winget | iex
@@ -122,12 +121,13 @@ No parameters are required to run the script, but there are some optional parame
 | `-DisableCleanup` | No       | Disables cleanup of the script and prerequisites after installation.          |
 | `-Force`          | No       | Ensures installation of winget and its dependencies, even if already present. |
 | `-CheckForUpdate` | No       | Checks if there is an update available for the script.                        |
+| `-UpdateSelf`     | No       | Updates the script to the latest version.                                     |
 | `-Version`        | No       | Displays the version of the script.                                           |
 | `-Help`           | No       | Displays the full help information for the script.                            |
 
 ## Troubleshooting
 
--   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2.
+-   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2
 -   If you run into an issue, please ensure your system is compatible & fully updated
 -   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs
 -   Try using the `-DebugMode` and `-DisableCleanup` parameters to see if it provides any additional information

@@ -68,13 +68,13 @@ This function should be run with administrative privileges.
 #>
 [CmdletBinding()]
 param (
-    [switch]$Version,
-    [switch]$Help,
-    [switch]$CheckForUpdate,
-    [switch]$DisableCleanup,
     [switch]$DebugMode,
+    [switch]$DisableCleanup,
     [switch]$Force,
-    [switch]$UpdateSelf
+    [switch]$CheckForUpdate,
+    [switch]$UpdateSelf,
+    [switch]$Version,
+    [switch]$Help
 )
 
 # Version
@@ -268,23 +268,24 @@ function CheckForUpdate {
 
     $Data = Get-GitHubRelease -Owner $RepoOwner -Repo $RepoName
 
+    Write-Output ""
+    Write-Output ("Repository:       {0,-40}" -f "https://github.com/$RepoOwner/$RepoName")
+    Write-Output ("Current Version:  {0,-40}" -f $CurrentVersion)
+    Write-Output ("Latest Version:   {0,-40}" -f $Data.LatestVersion)
+    Write-Output ("Published at:     {0,-40}" -f $Data.PublishedDateTime)
+
     if ($Data.LatestVersion -gt $CurrentVersion) {
-        Write-Output "`nA new version of $RepoName is available.`n"
-        Write-Output "Current version: $CurrentVersion."
-        Write-Output "Latest version: $($Data.LatestVersion)."
-        Write-Output "Published at: $($Data.PublishedDateTime).`n"
-        Write-Output "You can download the latest version from https://github.com/$RepoOwner/$RepoName/releases`n"
+        Write-Output ("Status:           {0,-40}" -f "A new version is available.")
+        Write-Output "`nOptions to update:"
+        Write-Output "- Download latest release: https://github.com/$RepoOwner/$RepoName/releases"
         if ($PowerShellGalleryName) {
-            Write-Output "Or you can run the following command to update:"
-            Write-Output "Install-Script $PowerShellGalleryName -Force`n"
+            Write-Output "- Run: $RepoName -UpdateSelf"
+            Write-Output "- Run: Install-Script $PowerShellGalleryName -Force"
         }
     } else {
-        Write-Output "`n$RepoName is up to date.`n"
-        Write-Output "Current version: $CurrentVersion."
-        Write-Output "Latest version: $($Data.LatestVersion)."
-        Write-Output "Published at: $($Data.PublishedDateTime)."
-        Write-Output "`nRepository: https://github.com/$RepoOwner/$RepoName/releases`n"
+        Write-Output ("Status:           {0,-40}" -f "Up to date.")
     }
+    Write-Output ""
     exit 0
 }
 
@@ -293,27 +294,32 @@ function UpdateSelf {
         # Get PSGallery version of script
         $psGalleryScriptVersion = (Find-Script -Name $PowerShellGalleryName).Version
 
-        # Output
-        Write-Output "Updating script to version $psGalleryScriptVersion..."
+        # If the current version is less than the PSGallery version, update the script
+        if ($CurrentVersion -lt $psGalleryScriptVersion) {
+            Write-Output "Updating script to version $psGalleryScriptVersion..."
 
-        # Install NuGet PackageProvider if not already installed
-        if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
-            Install-PackageProvider -Name "NuGet" -Force
+            # Install NuGet PackageProvider if not already installed
+            if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
+                Install-PackageProvider -Name "NuGet" -Force
+            }
+
+            # Trust the PSGallery if not already trusted
+            $repo = Get-PSRepository -Name 'PSGallery'
+            if ($repo.InstallationPolicy -ne 'Trusted') {
+                Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+            }
+
+            # Update the script
+            Install-Script $PowerShellGalleryName -Force
+
+            Write-Output "Script updated to version $psGalleryScriptVersion."
+            exit 0
+        } else {
+            Write-Output "Script is already up to date."
+            exit 0
         }
-
-        # Trust the PSGallery if not already trusted
-        $repo = Get-PSRepository -Name 'PSGallery'
-        if ($repo.InstallationPolicy -ne 'Trusted') {
-            Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
-        }
-
-        # Update the script
-        Install-Script winget-install -Force
-
-        Write-Output "Script updated to version $psGalleryScriptVersion."
-        exit 0
     } catch {
-        Write-Error "An error occurred while updating the script: $_"
+        Write-Output "An error occurred: $_"
         exit 1
     }
 }
@@ -801,18 +807,16 @@ function Install-Prerequisite {
 # Initial checks
 # ============================================================================ #
 
+# First heading
+Write-Output "winget-install $CurrentVersion"
+
 # Check for updates if -CheckForUpdate is specified
-if ($CheckForUpdate) {
-    CheckForUpdate -RepoOwner $RepoOwner -RepoName $RepoName -CurrentVersion $CurrentVersion -PowerShellGalleryName $PowerShellGalleryName
-}
+if ($CheckForUpdate) { CheckForUpdate -RepoOwner $RepoOwner -RepoName $RepoName -CurrentVersion $CurrentVersion -PowerShellGalleryName $PowerShellGalleryName }
 
 # Update the script if -UpdateSelf is specified
-if ($UpdateSelf) {
-    UpdateSelf
-}
+if ($UpdateSelf) { UpdateSelf }
 
 # Heading
-Write-Output "winget-install $CurrentVersion"
 Write-Output "To check for updates, run winget-install -CheckForUpdate"
 
 # Set OS version
