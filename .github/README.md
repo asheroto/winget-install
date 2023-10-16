@@ -60,9 +60,10 @@
 
 ## Setup
 
+**Note:** please use the latest version using `Install-Script` or by downloading the PS1 file from Releases. Using the version on the GitHub repository directly is not recommended because it may be under development and not ready for use.
+
 ### Method 1 - PowerShell Gallery
 
-**Note:** please use the latest version using Install-Script or the PS1 file from Releases, the version on GitHub itself may be under development and not work properly.
 
 Open PowerShell as Administrator and type
 
