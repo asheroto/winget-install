@@ -60,7 +60,7 @@
 
 ## Setup
 
-**Note:** Use the latest version using `Install-Script` or by downloading the PS1 file from [Releases](https://github.com/asheroto/winget-install/releases/). Using the version on the GitHub repository directly is **not recommended** because it may be under development and not ready for use.
+**Note:** To ensure you're using a stable version, either fetch the latest version via `Install-Script` or download it from the [Releases](https://github.com/asheroto/winget-install/releases/) page. Directly using the version from the GitHub repository is discouraged, as it might be in development and not yet stable for use.
 
 ### Method 1 - PowerShell Gallery
 
