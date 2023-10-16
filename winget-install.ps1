@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.1.0
+.VERSION 3.1.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -32,6 +32,7 @@
 [Version 3.0.1] - Updated Get-OSInfo function to fix issues when used on non-English systems. Improved error handling of "resources in use" error.
 [Version 3.0.2] - Added winget registration command for Windows 10 machines.
 [Version 3.1.0] - Added support for one-line installation with irm and iex compatible with $Force session variable. Added UpdateSelf command to automatically update the script to the latest version. Created short URL asheroto.com/winget.
+[Version 3.1.1] - Changed winget register command to run on all OS versions.
 
 #>
 
@@ -61,7 +62,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.1.0
+	Version      : 3.1.1
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -78,7 +79,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.1.0'
+$CurrentVersion = '3.1.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -938,21 +939,19 @@ try {
     Update-PathEnvironmentVariable -NewPath $WindowsAppsPath
 
     # ============================================================================ #
+    # Register winget
+    # ============================================================================ #
+    Write-Section "Registering winget..."
+    try {
+        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+        Write-Output "`winget command registered successfully."
+    } catch {
+        Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
+    }
+
+    # ============================================================================ #
     # Finished
     # ============================================================================ #
-
-    # If it is Windows 10, then run command to register winget
-    $osVersion = Get-OSInfo
-    $osType = $osVersion.Type
-    $osNumericVersion = $osVersion.NumericVersion
-    if ($osType -eq "Workstation" -and $osNumericVersion -eq 10) {
-        Write-Output "Windows 10 detected, registering winget..."
-        try {
-            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
-        } catch {
-            Write-Warning "Unable to register winget. Try running the following command: Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe"
-        }
-    }
 
     Write-Section "Installation complete!"
 
