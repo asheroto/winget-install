@@ -79,6 +79,9 @@ param (
     [switch]$Help
 )
 
+# Microsoft Add-AppxPackage URL:
+# https://learn.microsoft.com/en-us/powershell/module/appx/add-appxpackage?view=windowsserver2022-ps#-forceapplicationshutdown
+
 # Version
 $CurrentVersion = '3.1.2'
 $RepoOwner = 'asheroto'
