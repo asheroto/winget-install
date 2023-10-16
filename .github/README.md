@@ -1,11 +1,8 @@
 ![winget Windows 10](https://github.com/asheroto/winget-install/assets/49938263/f2fa626b-c4b6-4bd4-871c-814754d8ca0e)
-
-[![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-install)](https://github.com/asheroto/winget-install/releases)
-[![GitHub Downloads - All Releases](https://img.shields.io/github/downloads/asheroto/winget-install/total)](https://github.com/asheroto/winget-install/releases)
+[![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-installer)](https://github.com/asheroto/winget-installer/releases)
+[![GitHub Downloads - All Releases](https://img.shields.io/github/downloads/asheroto/winget-installer/total)](https://github.com/asheroto/winget-installer/releases)
 [![GitHub Sponsor](https://img.shields.io/github/sponsors/asheroto?label=Sponsor&logo=GitHub)](https://github.com/sponsors/asheroto)
-
-<a href="https://ko-fi.com/asheroto"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Ko-Fi Button" height="30px"></a>
-<a href="https://www.buymeacoffee.com/asheroto"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=seb6596&button_colour=FFDD00&font_colour=000000&font_family=Lato&outline_colour=000000&coffee_colour=ffffff](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=asheroto&button_colour=FFDD00&font_colour=000000&font_family=Lato&outline_colour=000000&coffee_colour=ffffff)" height="40px"></a>
+<a href="https://ko-fi.com/asheroto"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Ko-Fi Button" height="20px"></a>
 
 # Install winget from PowerShell
 
@@ -29,8 +26,7 @@
 -   Determines and installs the appropriate prerequisites based on OS version
 -   Updates existing prerequisites to their latest versions
 -   Supports x86/x64 and arm/arm64 architectures
--   Allows bypassing of existing `winget` installation verification through `-Force` parameter or `$Force` session variable
--   Supports irm/iex one-line command using short URL
+-   Allows bypassing of existing `winget` installation verification through `$Force` session variable or `-Force` parameter
 
 ## Script Functionality
 
