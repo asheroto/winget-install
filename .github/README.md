@@ -60,7 +60,7 @@
 
 ## Setup
 
-**Note:** please use the latest version using `Install-Script` or by downloading the PS1 file from Releases. Using the version on the GitHub repository directly is not recommended because it may be under development and not ready for use.
+**Note:** Use the latest version using `Install-Script` or by downloading the PS1 file from [Releases](https://github.com/asheroto/winget-install/releases/). Using the version on the GitHub repository directly is **not recommended** because it may be under development and not ready for use.
 
 ### Method 1 - PowerShell Gallery
 
@@ -99,7 +99,7 @@ The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to t
 irm asheroto.com/winget | iex
 ```
 
-If PowerShell exits immediately, that means winget is already installed. You can force the script to run again by setting the session variable `$Force` to `$true` before running the command.
+If PowerShell closes right away, it's likely because winget is already on your system. To override this and run the script again, set the `$Force` session variable to `$true` prior to executing the command. Note that the `-Force` parameter won't work in this context; it's only effective when the script is called using `winget-install`. If you're using the one-line command, you'll need to use the `$Force` session variable instead.
 
 ```powershell
 $Force = $true
