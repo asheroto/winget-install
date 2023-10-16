@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.1.2
+.VERSION 3.1.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -33,7 +33,6 @@
 [Version 3.0.2] - Added winget registration command for Windows 10 machines.
 [Version 3.1.0] - Added support for one-line installation with irm and iex compatible with $Force session variable. Added UpdateSelf command to automatically update the script to the latest version. Created short URL asheroto.com/winget.
 [Version 3.1.1] - Changed winget register command to run on all OS versions.
-[Version 3.1.2] - Added -ForceApplicationShutdown to Add-AppxPackage to fix issues with "resources in use" error.
 
 #>
 
@@ -63,7 +62,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.1.2
+	Version      : 3.1.1
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -79,11 +78,8 @@ param (
     [switch]$Help
 )
 
-# Microsoft Add-AppxPackage URL:
-# https://learn.microsoft.com/en-us/powershell/module/appx/add-appxpackage?view=windowsserver2022-ps#-forceapplicationshutdown
-
 # Version
-$CurrentVersion = '3.1.2'
+$CurrentVersion = '3.1.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -681,7 +677,7 @@ function Install-Prerequisite {
             Write-Output "URL: ${url}`n"
         }
         Write-Output "Installing ${arch} ${Name}..."
-        Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown
+        Add-AppxPackage $url -ErrorAction Stop
         Write-Output "`n$Name installed successfully."
     } catch {
         # Alternate method
@@ -713,7 +709,7 @@ function Install-Prerequisite {
                     Write-Output "URL: $($url)`n"
                 }
                 Write-Output "Installing ${arch} ${Name}..."
-                Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown
+                Add-AppxPackage $url -ErrorAction Stop
                 Write-Output "`n$Name installed successfully."
             }
 
@@ -766,7 +762,7 @@ function Install-Prerequisite {
                 # Install
                 Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
                     if ($DebugMode) { Write-Output "Installing appx Package: $($_.Name)" }
-                    Add-AppxPackage $_.FullName -ErrorAction Stop -ForceApplicationShutdown
+                    Add-AppxPackage $_.FullName -ErrorAction Stop
                 }
                 Write-Output "`nUI.Xaml installed successfully."
 
@@ -947,7 +943,7 @@ try {
     # ============================================================================ #
     Write-Section "Registering winget..."
     try {
-        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ForceApplicationShutdown
+        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
         Write-Output "`winget command registered successfully."
     } catch {
         Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
