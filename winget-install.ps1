@@ -909,7 +909,7 @@ if (Get-WingetStatus) {
 
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
-    Write-Output "-ForceClose is specified"
+    Write-Output "-ForceClose is specified. Conflicting processes will be closed automatically!"
     if ($currentProcessModuleName -eq "WindowsTerminal") {
     Write-Output "Terminal detected, relaunching in conhost in 10 seconds..."
     Start-Sleep -Seconds 10
