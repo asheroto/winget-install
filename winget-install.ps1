@@ -912,12 +912,10 @@ if ($ForceClose) {
     Write-Output "-ForceClose is specified, relaunching in conhost in 10 seconds..."
     Start-Sleep -Seconds 10
 
-    if ($currentProcessModuleName -ne "conhost") {
-        # Remove -ForceClose from the command line, case-insensitive
-        $newInvocationLine = $MyInvocation.Line -replace '(?i)-ForceClose', ''
+    if ($currentProcessModuleName -eq "WindowsTerminal") {
 
         # Prepare the command to relaunch
-        $command = "cd '$pwd'; $newInvocationLine"
+        $command = "cd '$pwd'; $MyInvocation.Line"
 
         # Relaunch in conhost
         Start-Process -FilePath "conhost" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
