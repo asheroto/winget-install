@@ -33,7 +33,7 @@
 [Version 3.0.2] - Added winget registration command for Windows 10 machines.
 [Version 3.1.0] - Added support for one-line installation with irm and iex compatible with $Force session variable. Added UpdateSelf command to automatically update the script to the latest version. Created short URL asheroto.com/winget.
 [Version 3.1.1] - Changed winget register command to run on all OS versions.
-[Version 3.2.0] - Added -ForceClose logic.
+[Version 3.2.0] - Added -ForceClose logic to relaunch with conhost andrelaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation.
 
 #>
 
@@ -506,7 +506,7 @@ function Handle-Error {
     } elseif ($ErrorRecord.Exception.Message -match '0x80073D02') {
         # Stop execution and return the ErrorRecord so that the calling try/catch block throws the error
         Write-Warning "Resources modified are in-use. Try closing Windows Terminal / PowerShell / Command Prompt and try again."
-        Write-Warning "Windows Terminal sometimes has trouble installing winget. If you are using Windows Terminal and the problem persists, run the script with the -ForceClose parameter which will relaunch the script in conhost.exe and automatically ends active processes associated with winget that could interfere with the installation."
+        Write-Warning "Windows Terminal sometimes has trouble installing winget. If you are using Windows Terminal and the problem persists, run the script with the -ForceClose parameter which will relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation."
         return $ErrorRecord
     } elseif ($ErrorRecord.Exception.Message -match 'Unable to connect to the remote server') {
         Write-Warning "Cannot connect to the Internet to download the required files."

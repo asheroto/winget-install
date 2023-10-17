@@ -119,15 +119,16 @@ irm asheroto.com/winget | iex
 
 No parameters are required to run the script, but there are some optional parameters to use if needed.
 
-| Parameter         | Required | Description                                                                   |
-| ----------------- | -------- | ----------------------------------------------------------------------------- |
-| `-DebugMode`      | No       | Enables debug mode, which shows additional information for debugging.         |
-| `-DisableCleanup` | No       | Disables cleanup of the script and prerequisites after installation.          |
-| `-Force`          | No       | Ensures installation of winget and its dependencies, even if already present. |
-| `-CheckForUpdate` | No       | Checks if there is an update available for the script.                        |
-| `-UpdateSelf`     | No       | Updates the script to the latest version.                                     |
-| `-Version`        | No       | Displays the version of the script.                                           |
-| `-Help`           | No       | Displays the full help information for the script.                            |
+| Parameter         | Required | Description                                                                                                                                                                                                                                            |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `-DebugMode`      | No       | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
+| `-DisableCleanup` | No       | Disables cleanup of the script and prerequisites after installation.                                                                                                                                                                                   |
+| `-Force`          | No       | Ensures installation of winget and its dependencies, even if already present.                                                                                                                                                                          |
+| `-ForceClose`     | No       | Windows Terminal sometimes has trouble installing winget; run the script with the -ForceClose parameter to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation |
+| `-CheckForUpdate` | No       | Checks if there is an update available for the script.                                                                                                                                                                                                 |
+| `-UpdateSelf`     | No       | Updates the script to the latest version.                                                                                                                                                                                                              |
+| `-Version`        | No       | Displays the version of the script.                                                                                                                                                                                                                    |
+| `-Help`           | No       | Displays the full help information for the script.                                                                                                                                                                                                     |
 
 ## Troubleshooting
 
@@ -135,6 +136,7 @@ No parameters are required to run the script, but there are some optional parame
 -   If you run into an issue, please ensure your system is compatible & fully updated
 -   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs
 -   Try using the `-DebugMode` and `-DisableCleanup` parameters to see if it provides any additional information
+-   If you're getting a `resource in use` error message, run the script again with the `-ForceClose` parameter
 -   Try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
 -   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script)
 -   Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md)
@@ -142,4 +144,4 @@ No parameters are required to run the script, but there are some optional parame
 
 ## Contributing
 
-If you're like to help develop this project: fork the repo. 😊
+If you're like to help develop this project: fork the repo, edit the code, then submit a pull request. 😊
