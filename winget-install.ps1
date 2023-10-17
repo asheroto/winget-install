@@ -915,7 +915,7 @@ if ($ForceClose) {
     if ($currentProcessModuleName -eq "WindowsTerminal") {
 
         # Prepare the command to relaunch
-        $command = "cd '$pwd'; $MyInvocation.Line"
+        $command = "cd '$pwd'; $($MyInvocation.Line)"
 
         # Relaunch in conhost
         Start-Process -FilePath "conhost" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
