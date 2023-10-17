@@ -31,6 +31,7 @@
 -   Supports x86/x64 and arm/arm64 architectures
 -   Allows bypassing of existing `winget` installation verification through `-Force` parameter or `$Force` session variable
 -   Supports irm/iex one-line command using short URL
+-   Supports automatically relaunching in conhost and ending active processes associated with winget that could interfere with the installation
 
 ## Script Functionality
 
