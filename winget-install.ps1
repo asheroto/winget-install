@@ -853,7 +853,7 @@ function ExitWithDelay {
 
     Write-Output "`nWaiting for 10 seconds before exiting..."
     Start-Sleep -Seconds 10
-    #it's breaks batch files and ps1 scripts with extra commands.
+    #it may breaks batch files and ps1 scripts with extra commands. Need to add a warning.
     exit $ExitCode
 }
 
