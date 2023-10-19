@@ -912,7 +912,7 @@ if ($ForceClose) {
     Write-Output "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
     if ($currentProcessModuleName -eq "WindowsTerminal") {
         Write-Output "Terminal detected, relaunching in conhost in 10 seconds..."
-        Write-Output "It may breaks your custom batch files and ps1 scripts with extra commands!"
+        Write-Output "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
 
         # Prepare the command to relaunch
