@@ -907,17 +907,16 @@ if (Get-WingetStatus) {
     }
 }
 
-# Check if ForceClose parameter is specified, if so relaunch in conhost
+# Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
-    Write-Output "-ForceClose is specified, relaunching in conhost in 10 seconds..."
-    Start-Sleep -Seconds 10
-
-    if ($currentProcessModuleName -ne "conhost") {
-        # Remove -ForceClose from the command line, case-insensitive
-        $newInvocationLine = $MyInvocation.Line -replace '(?i)-ForceClose', ''
+    Write-Output "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
+    if ($currentProcessModuleName -eq "WindowsTerminal") {
+        Write-Output "Terminal detected, relaunching in conhost in 10 seconds..."
+        Write-Output "It may break your custom batch files and ps1 scripts with extra commands!"
+        Start-Sleep -Seconds 10
 
         # Prepare the command to relaunch
-        $command = "cd '$pwd'; $newInvocationLine"
+        $command = "cd '$pwd'; $($MyInvocation.Line)"
 
         # Relaunch in conhost
         Start-Process -FilePath "conhost" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
