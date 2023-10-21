@@ -120,7 +120,7 @@ irm asheroto.com/winget | iex
 
 ## Parameters
 
-No parameters are required to run the script, but there are some optional parameters to use if needed.
+**No parameters are required** to run the script, but there are some optional parameters to use if needed.
 
 | Parameter         | Description                                                                                                                                                                                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
