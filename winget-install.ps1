@@ -108,11 +108,6 @@ if ($PSBoundParameters.ContainsKey('Verbose') -and $PSBoundParameters['Verbose']
     Get-Host
 }
 
-# Check if the $Force parameter was passed in; if not, check for a session variable
-if (-not $Force -and (Get-Variable -Name 'Force' -Scope Global -ErrorAction SilentlyContinue)) {
-    $Force = $global:Force
-}
-
 function Get-TempFolder {
     <#
         .SYNOPSIS
@@ -506,7 +501,7 @@ function Handle-Error {
     } elseif ($ErrorRecord.Exception.Message -match '0x80073D02') {
         # Stop execution and return the ErrorRecord so that the calling try/catch block throws the error
         Write-Warning "Resources modified are in-use. Try closing Windows Terminal / PowerShell / Command Prompt and try again."
-        Write-Warning "Windows Terminal sometimes has trouble installing winget. If you are using Windows Terminal and the problem persists, run the script with the -ForceClose parameter which will relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation."
+        Write-Warning "Windows Terminal sometimes has trouble installing winget. If you are using Windows Terminal and the problem persists, run the script with the -ForceClose parameter which will relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation. Please note that using the -ForceClose parameter will close the PowerShell window and could break custom scripts that rely on the current PowerShell session."
         return $ErrorRecord
     } elseif ($ErrorRecord.Exception.Message -match 'Unable to connect to the remote server') {
         Write-Warning "Cannot connect to the Internet to download the required files."
@@ -808,18 +803,18 @@ function Install-Prerequisite {
 
 function Get-CurrentProcessModuleName {
     <#
-    .SYNOPSIS
-        Gets the module name of the current PowerShell process.
+        .SYNOPSIS
+            Gets the module name of the current PowerShell process.
 
-    .DESCRIPTION
-        This function retrieves the window title of the current PowerShell host, finds the corresponding process, and returns the name of the main module of that process without the file extension.
+        .DESCRIPTION
+            This function retrieves the window title of the current PowerShell host, finds the corresponding process, and returns the name of the main module of that process without the file extension.
 
-    .EXAMPLE
-        $processName = Get-CurrentProcessModuleName
-        This example shows how to use the function to get the module name of the current process and store it in a variable.
+        .EXAMPLE
+            $processName = Get-CurrentProcessModuleName
+            This example shows how to use the function to get the module name of the current process and store it in a variable.
 
-    .NOTES
-        This function assumes that the window title is unique to the current PowerShell session. If multiple windows have the same title, the function may not behave as expected.
+        .NOTES
+            This function assumes that the window title is unique to the current PowerShell session. If multiple windows have the same title, the function may not behave as expected.
     #>
 
     $windowTitle = $host.ui.RawUI.WindowTitle
@@ -831,34 +826,67 @@ function Get-CurrentProcessModuleName {
 
 function ExitWithDelay {
     <#
-    .SYNOPSIS
-        Exits the script with a specified exit code after a 10-second delay.
+        .SYNOPSIS
+            Exits the script with a specified exit code after a 10-second delay.
 
-    .DESCRIPTION
-        This function takes an exit code as an argument, waits for 10 seconds, and then exits the script with the given exit code.
+        .DESCRIPTION
+            This function takes an exit code as an argument, waits for 10 seconds, and then exits the script with the given exit code.
 
-    .PARAMETER ExitCode
-        The exit code to use when exiting the script.
+        .PARAMETER ExitCode
+            The exit code to use when exiting the script.
 
-    .EXAMPLE
-        ExitWithDelay -ExitCode 1
-        Waits for 10 seconds and then exits the script with an exit code of 1.
-    .NOTES
-        Use this function to introduce a delay before exiting the script, allowing time for any cleanup or logging activities.
+        .EXAMPLE
+            ExitWithDelay -ExitCode 1
+            Waits for 10 seconds and then exits the script with an exit code of 1.
+        .NOTES
+            Use this function to introduce a delay before exiting the script, allowing time for any cleanup or logging activities.
     #>
 
     param (
-        [int]$ExitCode
+        [int]$ExitCode,
+        [int]$Seconds = 10
     )
 
-    Write-Output "`nWaiting for 10 seconds before exiting..."
-    Start-Sleep -Seconds 10
+    Write-Output "`nWaiting for $Seconds seconds before exiting..."
+    Start-Sleep -Seconds $Seconds
     exit $ExitCode
+}
+
+function Import-GlobalVariable {
+    <#
+        .SYNOPSIS
+        This function checks if a specified global variable exists and imports its value into a script scope variable of the same name.
+
+        .DESCRIPTION
+        The Import-GlobalVariable function allows you to specify the name of a variable. It checks if a global variable with that name exists, and if it does, it imports its value into a script scope variable with the same name.
+
+        .PARAMETER VariableName
+        The name of the variable to check and import if it exists in the global scope.
+
+    #>
+
+    [CmdletBinding()]
+    param(
+        [string]$VariableName
+    )
+
+    # Check if the specified global variable exists; if yes, import its value
+    try {
+        $globalValue = Get-Variable -Name $VariableName -ValueOnly -Scope Global -ErrorAction Stop
+        Set-Variable -Name $VariableName -Value $globalValue -Scope Script
+    } catch {
+        # If the variable does not exist, do nothing
+    }
 }
 
 # ============================================================================ #
 # Initial checks
 # ============================================================================ #
+
+# Use global variables if specified by user
+Import-GlobalVariable -VariableName "DebugMode"
+Import-GlobalVariable -VariableName "ForceClose"
+Import-GlobalVariable -VariableName "Force"
 
 # First heading
 Write-Output "winget-install $CurrentVersion"
@@ -903,23 +931,28 @@ if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
 if (Get-WingetStatus) {
     if ($Force -eq $false) {
         Write-Output "winget is already installed, exiting..."
-        ExitWithDelay 0
+        ExitWithDelay 0 5
     }
 }
 
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
-    Write-Output "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
+    Write-Warning "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
     if ($currentProcessModuleName -eq "WindowsTerminal") {
-        Write-Output "Terminal detected, relaunching in conhost in 10 seconds..."
-        Write-Output "It may break your custom batch files and ps1 scripts with extra commands!"
+        Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
+        Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
 
         # Prepare the command to relaunch
         $command = "cd '$pwd'; $($MyInvocation.Line)"
 
+        # Append parameters if their corresponding variables are $true and not already in the command
+        if ($Force -and !($command -imatch '\s-Force\b')) { $command += " -Force" }
+        if ($ForceClose -and !($command -imatch '\s-ForceClose\b')) { $command += " -ForceClose" }
+        if ($DebugMode -and !($command -imatch '\s-DebugMode\b')) { $command += " -DebugMode" }
+
         # Relaunch in conhost
-        Start-Process -FilePath "conhost" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
+        Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
 
         # Stop the current process module
         Stop-Process -Name $currentProcessModuleName
