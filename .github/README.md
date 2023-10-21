@@ -103,7 +103,7 @@ irm asheroto.com/winget | iex
 
 If PowerShell closes right away, it's likely because winget is already on your system. To override this and run the script again, set the `$Force` session variable to `$true` prior to executing the command. Note that the `-Force` parameter won't work in this context; it's only effective when the script is called using `winget-install`. If you're using the one-line command, you'll need to use the `$Force` session variable instead.
 
-## **NOTE: The `$Force = $true` / `$ForceClose = $true` is *not* working right now but we are working on fixing it.**
+## **NOTE: The `$Force = $true` / `$ForceClose = $true` is _not_ working right now but we are working on fixing it.**
 
 You can still use `-Force` and `-ForceClose` parameters when running the script using `winget-install` or `winget-install.ps1` directly, it's just the global variable specification that is currently broken.
 
@@ -122,17 +122,17 @@ irm asheroto.com/winget | iex
 
 No parameters are required to run the script, but there are some optional parameters to use if needed.
 
-| Parameter         | Required | Description                                                                                                                                                                                                                                            |
-| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `-DebugMode`      | No       | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
-| `-DisableCleanup` | No       | Disables cleanup of the script and prerequisites after installation.                                                                                                                                                                                   |
-| `-Force`          | No       | Ensures installation of winget and its dependencies, even if already present.                                                                                                                                                                          |
-| `-ForceClose`     | No       | Windows Terminal sometimes has trouble installing winget; run the script with the -ForceClose parameter to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation |
-| `-CheckForUpdate` | No       | Checks if there is an update available for the script.                                                                                                                                                                                                 |
-| `-UpdateSelf`     | No       | Updates the script to the latest version.                                                                                                                                                                                                              |
-| `-Version`        | No       | Displays the version of the script.                                                                                                                                                                                                                    |
-| `-Help`           | No       | Displays the full help information for the script.                                                                                                                                                                                                     |
-
+| Parameter         | Description                                                                                                                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `-DebugMode`      | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
+| `-DisableCleanup` | Disables cleanup of the script and prerequisites after installation.                                                                                                                                                                                   |
+| `-Force`          | Ensures installation of winget and its dependencies, even if already present.                                                                                                                                                                          |
+| `-ForceClose`     | Windows Terminal sometimes has trouble installing winget; run the script with the -ForceClose parameter to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation |
+| `-CheckForUpdate` | Checks if there is an update available for the script.                                                                                                                                                                                                 |
+| `-UpdateSelf`     | Updates the script to the latest version.                                                                                                                                                                                                              |
+| `-Version`        | Displays the version of the script.                                                                                                                                                                                                                    |
+| `-Help`           | Displays the full help information for the script.                                                                                                                                                                                                     |
+R
 ## Troubleshooting
 
 -   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2
