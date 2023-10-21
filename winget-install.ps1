@@ -4,7 +4,7 @@
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
-.AUTHOR asheroto, 1ckov, MisterZeus, ChrisTitusTech
+.AUTHOR asheroto, 1ckov, MisterZeus, ChrisTitusTech, uffemcev
 
 .COMPANYNAME asheroto
 
