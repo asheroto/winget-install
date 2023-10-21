@@ -132,7 +132,7 @@ irm asheroto.com/winget | iex
 | `-UpdateSelf`     | Updates the script to the latest version.                                                                                                                                                                                                              |
 | `-Version`        | Displays the version of the script.                                                                                                                                                                                                                    |
 | `-Help`           | Displays the full help information for the script.                                                                                                                                                                                                     |
-R
+
 ## Troubleshooting
 
 -   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2
