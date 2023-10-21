@@ -103,8 +103,10 @@ irm asheroto.com/winget | iex
 
 If PowerShell closes right away, it's likely because winget is already on your system. To override this and run the script again, set the `$Force` session variable to `$true` prior to executing the command. Note that the `-Force` parameter won't work in this context; it's only effective when the script is called using `winget-install`. If you're using the one-line command, you'll need to use the `$Force` session variable instead.
 
+## **NOTE: The `$Force = $true` / `$ForceClose = $true` is *not* working right now but we are working on fixing it.**
 ```powershell
 $Force = $true
+$ForceClose = $true
 irm asheroto.com/winget | iex
 ```
 
