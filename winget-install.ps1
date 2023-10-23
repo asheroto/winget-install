@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.1
+.VERSION 3.2.2
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -35,6 +35,7 @@
 [Version 3.1.1] - Changed winget register command to run on all OS versions.
 [Version 3.2.0] - Added -ForceClose logic to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation. Improved verbiage on winget already installed.
 [Version 3.2.1] - Fixed minor glitch when using -Version or -Help parameters.
+[Version 3.2.2] - Improved script exit functionality.
 
 #>
 
@@ -64,7 +65,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.1
+	Version      : 3.2.2
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -82,7 +83,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.2.1'
+$CurrentVersion = '3.2.2'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -253,7 +254,7 @@ function Get-GitHubRelease {
         }
     } catch {
         Write-Error "Unable to check for updates.`nError: $_"
-        ExitWithDelay 1
+        exit 1
     }
 }
 
@@ -311,14 +312,14 @@ function UpdateSelf {
             Install-Script $PowerShellGalleryName -Force
 
             Write-Output "Script updated to version $psGalleryScriptVersion."
-            ExitWithDelay 0
+            exit 0
         } else {
             Write-Output "Script is already up to date."
-            ExitWithDelay 0
+            exit 0
         }
     } catch {
         Write-Output "An error occurred: $_"
-        ExitWithDelay 1
+        exit 1
     }
 }
 
