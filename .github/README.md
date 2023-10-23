@@ -66,6 +66,8 @@
 
 ### Method 1 - PowerShell Gallery
 
+**This is the recommended method, because it always gets the public release that has been tested, it's easy to remember, and supports all parameters.**
+
 Open PowerShell as Administrator and type
 
 ```powershell
@@ -82,6 +84,8 @@ Follow the prompts to complete the installation (you can tap `A` to accept all p
 winget-install
 ```
 
+If `winget` is already installed, you can use the `-Force` parameter to force the script to run anyway.
+
 The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
 
 #### Tip - How to trust PSGallery
@@ -97,26 +101,27 @@ Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
 The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to the [latest code-signed release](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) of the script.
 
+If you just need to run the basic script without any parameters, you can use the following one-line command:
+
 ```powershell
 irm asheroto.com/winget | iex
 ```
 
-If PowerShell closes right away, it's likely because winget is already on your system. To override this and run the script again, set the `$Force` session variable to `$true` prior to executing the command. Note that the `-Force` parameter won't work in this context; it's only effective when the script is called using `winget-install`. If you're using the one-line command, you'll need to use the `$Force` session variable instead.
-
-## **NOTE: The `$Force = $true` / `$ForceClose = $true` is _not_ working right now but we are working on fixing it.**
-
-You can still use `-Force` and `-ForceClose` parameters when running the script using `winget-install` or `winget-install.ps1` directly, it's just the global variable specification that is currently broken.
+Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` or by setting `$Force` with this method, but if you absolutely need to use a one-line command with parameters, you can use the following:
 
 ```powershell
-$Force = $true
-$ForceClose = $true
-irm asheroto.com/winget | iex
+iex "& { $(iwr asheroto.com/winget) } -Force"
 ```
 
 ### Method 3 - Download Locally and Run
 
--   Download the latest [winget-install.ps1](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) from [Releases](https://github.com/asheroto/winget-install/releases)
--   Run the script with `.\winget-install.ps1`
+As a more conventional approach, download the latest [winget-install.ps1](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) from [Releases](https://github.com/asheroto/winget-install/releases), then run the script as follows:
+
+```powershell
+.\winget-install.ps1
+```
+
+You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force = $true` and `$ForceClose = $true` global session variables if preferred.
 
 ## Parameters
 
@@ -132,6 +137,29 @@ irm asheroto.com/winget | iex
 | `-UpdateSelf`     | Updates the script to the latest version.                                                                                                                                                                                                              |
 | `-Version`        | Displays the version of the script.                                                                                                                                                                                                                    |
 | `-Help`           | Displays the full help information for the script.                                                                                                                                                                                                     |
+
+### Example Parameters Usage
+
+```powershell
+winget-install -Force
+```
+
+## Global Variables
+
+Global variables are _optional_ and are only needed if you don't want to use parameters. They can be set before running the script, or you can set them in your PowerShell profile to always use them.
+
+| Variable      | Description                                                                                                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `$DebugMode`  | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
+| `$Force`      | Ensures installation of winget and its dependencies, even if already present.                                                                                                                                                                          |
+| `$ForceClose` | Windows Terminal sometimes has trouble installing winget; run the script with the -ForceClose parameter to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation |
+
+### Example Global Variables Usage
+
+```powershell
+$Force = $true
+winget-install
+```
 
 ## Troubleshooting
 

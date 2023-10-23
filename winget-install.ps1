@@ -930,7 +930,8 @@ if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
 # Check if winget is already installed
 if (Get-WingetStatus) {
     if ($Force -eq $false) {
-        Write-Output "winget is already installed, exiting..."
+        Write-Warning "winget is already installed, exiting..."
+        Write-Warning "If you want to reinstall winget, run the script with the -Force parameter."
         ExitWithDelay 0 5
     }
 }
