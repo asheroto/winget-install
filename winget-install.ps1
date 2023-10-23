@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.0
+.VERSION 3.2.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -34,6 +34,7 @@
 [Version 3.1.0] - Added support for one-line installation with irm and iex compatible with $Force session variable. Added UpdateSelf command to automatically update the script to the latest version. Created short URL asheroto.com/winget.
 [Version 3.1.1] - Changed winget register command to run on all OS versions.
 [Version 3.2.0] - Added -ForceClose logic to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation. Improved verbiage on winget already installed.
+[Version 3.2.1] - Fixed minor glitch when using -Version or -Help parameters.
 
 #>
 
@@ -63,7 +64,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.0
+	Version      : 3.2.1
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -81,7 +82,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.2.0'
+$CurrentVersion = '3.2.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -93,13 +94,13 @@ $ConfirmPreference = 'None' # Suppress confirmation prompts
 # Display version if -Version is specified
 if ($Version.IsPresent) {
     $CurrentVersion
-    ExitWithDelay 0
+    exit 0
 }
 
 # Display full help if -Help is specified
 if ($Help) {
     Get-Help -Name $MyInvocation.MyCommand.Source -Full
-    ExitWithDelay 0
+    exit 0
 }
 
 # Display $PSVersionTable and Get-Host if -Verbose is specified
@@ -283,8 +284,7 @@ function CheckForUpdate {
     } else {
         Write-Output ("Status:           {0,-40}" -f "Up to date.")
     }
-    Write-Output ""
-    ExitWithDelay 0
+    exit 0
 }
 
 function UpdateSelf {
