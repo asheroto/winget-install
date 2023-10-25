@@ -802,27 +802,19 @@ function Install-Prerequisite {
     }
 }
 
-function Get-CurrentProcessModuleName {
-    <#
-        .SYNOPSIS
-            Gets the module name of the current PowerShell process.
-
-        .DESCRIPTION
-            This function retrieves the window title of the current PowerShell host, finds the corresponding process, and returns the name of the main module of that process without the file extension.
-
-        .EXAMPLE
-            $processName = Get-CurrentProcessModuleName
-            This example shows how to use the function to get the module name of the current process and store it in a variable.
-
-        .NOTES
-            This function assumes that the window title is unique to the current PowerShell session. If multiple windows have the same title, the function may not behave as expected.
-    #>
-
+function Get-CurrentInterfaceName {
     $windowTitle = $host.ui.RawUI.WindowTitle
     $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $windowTitle }
-    $moduleNameWithExtension = $currentProcess.MainModule.ModuleName
-    $moduleNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($moduleNameWithExtension)
-    return $moduleNameWithoutExtension
+    $processMember = get-process | get-member | foreach {($_.Name)}
+    $Search = $processMember | foreach {$currentProcess.$_}
+    $result = if ($Search -match "WindowsTerminal") {
+        "WindowsTerminal"
+    } elseif ($Search -match "Conhost") {
+        "Conhost"
+    } else {
+        "Powershell"
+    }
+    return $result
 }
 
 function ExitWithDelay {
@@ -908,7 +900,7 @@ $osVersion = Get-OSInfo
 $arch = $osVersion.Architecture
 
 # Get current process module name to determine if launched in conhost
-$currentProcessModuleName = Get-CurrentProcessModuleName
+$CurrentInterfaceName = Get-CurrentInterfaceName
 
 # If it's a workstation, make sure it is Windows 10+
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -lt 10) {
@@ -940,7 +932,7 @@ if (Get-WingetStatus) {
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
     Write-Warning "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
-    if ($currentProcessModuleName -eq "WindowsTerminal") {
+    if ($CurrentInterfaceName -eq "WindowsTerminal") {
         Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
         Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
@@ -957,7 +949,7 @@ if ($ForceClose) {
         Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
 
         # Stop the current process module
-        Stop-Process -Name $currentProcessModuleName
+        Stop-Process -Name $CurrentInterfaceName
     }
 }
 
