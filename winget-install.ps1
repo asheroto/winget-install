@@ -946,10 +946,14 @@ if ($ForceClose) {
         if ($DebugMode -and !($command -imatch '\s-DebugMode\b')) { $command += " -DebugMode" }
 
         # Relaunch in conhost
-        if ([Environment]::Is64BitProcess) {
+        if ([Environment]::Is64BitOperatingSystem) {
+            if ([Environment]::Is64BitProcess) {
+                Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
+            } else {
+                Start-Process -FilePath "$env:windir\sysnative\conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
+            }
+	} else {
             Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
-        } else {
-            Start-Process -FilePath "$env:windir\sysnative\conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
         }
 
         # Stop the current process module
