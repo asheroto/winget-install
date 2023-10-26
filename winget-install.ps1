@@ -808,7 +808,10 @@ function Get-CurrentProcess {
     $host.ui.RawUI.WindowTitle = $tempTitle
     start-sleep 1
     $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $tempTitle }
-    $currentProcess = @{Name = $currentProcess.Name; Id = $currentProcess.Id}
+    $currentProcess = [PSCustomObject]@{
+        Name = $currentProcess.Name
+	Id = $currentProcess.Id
+    }
     $host.ui.RawUI.WindowTitle = $oldTitle
     return $currentProcess
 }
