@@ -110,7 +110,7 @@ irm asheroto.com/winget | iex
 Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` or by setting `$Force` with this method, but if you absolutely need to use a one-line command with parameters, you can use the following:
 
 ```powershell
-iex "& { $(iwr asheroto.com/winget) } -Force"
+&([ScriptBlock]::Create((irm asheroto.com/winget))) -Force
 ```
 
 ### Method 3 - Download Locally and Run
