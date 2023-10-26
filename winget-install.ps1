@@ -928,7 +928,7 @@ if (Get-WingetStatus) {
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
     Write-Warning "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
-    if ($CurrentProcess.Name -eq "WindowsTerminal") {
+    if ($currentProcess.Name -eq "WindowsTerminal") {
         Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
         Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
