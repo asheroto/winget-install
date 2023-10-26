@@ -804,17 +804,14 @@ function Install-Prerequisite {
 
 function Get-CurrentInterfaceName {
     $windowTitle = $host.ui.RawUI.WindowTitle
-    $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $windowTitle }
-    $processMember = get-process | get-member | foreach {($_.Name)}
-    $Search = $processMember | foreach {$currentProcess.$_}
-    $result = if ($Search -match "WindowsTerminal") {
-        "WindowsTerminal"
-    } elseif ($Search -match "Conhost") {
-        "Conhost"
+    $explorerId = (Get-Process -name explorer).id
+    $currentProcessParentId = (Get-WmiObject Win32_Process -Filter "ProcessId=$PID").ParentProcessId
+    if ($explorerId -eq $currentProcessParentId) {
+        $currentInterfaceName = (Get-process -id $pid).Name
     } else {
-        "Powershell"
+        $currentInterfaceName = (Get-process -id $currentProcessParentId).Name
     }
-    return $result
+    return $currentInterfaceName
 }
 
 function ExitWithDelay {
