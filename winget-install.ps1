@@ -802,16 +802,25 @@ function Install-Prerequisite {
     }
 }
 
-function Get-CurrentInterfaceName {
+function Get-CurrentInterface {
+    param (
+        [switch]$Name,
+        [switch]$Id
+    )
     $windowTitle = $host.ui.RawUI.WindowTitle
     $explorerId = (Get-Process -name explorer).id
     $currentProcessParentId = (Get-WmiObject Win32_Process -Filter "ProcessId=$PID").ParentProcessId
     if ($explorerId -eq $currentProcessParentId) {
-        $currentInterfaceName = (Get-process -id $pid).Name
+        $currentInterface = (Get-process -id $pid).Name
     } else {
-        $currentInterfaceName = (Get-process -id $currentProcessParentId).Name
+        $currentInterface = (Get-process -id $currentProcessParentId).Name
     }
-    return $currentInterfaceName
+    if ($Name) {
+        return $currentInterface
+    }
+    if ($Id) {
+        if ($currentInterface -eq "WindowsTerminal") {return $currentProcessParentId} else {return $pid}
+    }
 }
 
 function ExitWithDelay {
@@ -897,7 +906,8 @@ $osVersion = Get-OSInfo
 $arch = $osVersion.Architecture
 
 # Get current process module name to determine if launched in conhost
-$CurrentInterfaceName = Get-CurrentInterfaceName
+$currentInterfaceName = Get-CurrentInterface -Name
+$currentInterfaceId = Get-CurrentInterface -Id
 
 # If it's a workstation, make sure it is Windows 10+
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -lt 10) {
@@ -954,7 +964,7 @@ if ($ForceClose) {
         }
 
         # Stop the current process module
-        Stop-Process -Name $CurrentInterfaceName
+        Stop-Process -id $CurrentInterfaceId
     }
 }
 
