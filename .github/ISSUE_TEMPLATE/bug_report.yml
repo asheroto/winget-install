@@ -7,7 +7,7 @@ body:
 - type: markdown
   attributes:
     value: |
-      Please check to see if your feature already exists in the [Issues](https://github.com/asheroto/winget-install).
+      Please check to see if your feature already exists in the [Issues](https://github.com/asheroto/winget-install/issues).
 
       **Name your issue appropriately:** give it a sentence that reads well enough for anyone seeing this in the release notes to know what it is.
 
