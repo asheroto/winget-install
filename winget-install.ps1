@@ -803,18 +803,14 @@ function Install-Prerequisite {
 }
 
 function Get-CurrentProcess {
-    param (
-        [switch]$name,
-        [switch]$id
-    )
     $oldTitle = $host.ui.RawUI.WindowTitle
     $tempTitle = (New-Guid).guid
     $host.ui.RawUI.WindowTitle = $tempTitle
     start-sleep 1
-    $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $TempTitle }
+    $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $tempTitle }
+    $currentProcess = @{Name = $currentProcess.Name; Id = $currentProcess.Id}
     $host.ui.RawUI.WindowTitle = $oldTitle
-    if ($name) {return $currentProcess.Name}
-    if ($id) {return $currentProcess.Id}
+    return $currentProcess
 }
 
 function ExitWithDelay {
@@ -900,8 +896,7 @@ $osVersion = Get-OSInfo
 $arch = $osVersion.Architecture
 
 # Get current process module name to determine if launched in conhost
-$currentProcessName = Get-CurrentProcess -Name
-$currentProcessId = Get-CurrentProcess -Id
+$currentProcess = Get-CurrentProcess
 
 # If it's a workstation, make sure it is Windows 10+
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -lt 10) {
@@ -933,7 +928,7 @@ if (Get-WingetStatus) {
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
     Write-Warning "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
-    if ($CurrentProcessName -eq "WindowsTerminal") {
+    if ($CurrentProcess.Name -eq "WindowsTerminal") {
         Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
         Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
@@ -958,7 +953,7 @@ if ($ForceClose) {
         }
 
         # Stop the current process module
-        Stop-Process -id $currentProcessId
+        Stop-Process -id $currentProcess.Id
     }
 }
 
