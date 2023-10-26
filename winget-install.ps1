@@ -802,25 +802,19 @@ function Install-Prerequisite {
     }
 }
 
-function Get-CurrentInterface {
+function Get-CurrentProcess {
     param (
-        [switch]$Name,
-        [switch]$Id
+        [switch]$name,
+        [switch]$id
     )
-    $windowTitle = $host.ui.RawUI.WindowTitle
-    $explorerId = (Get-Process -name explorer).id
-    $currentProcessParentId = (Get-WmiObject Win32_Process -Filter "ProcessId=$PID").ParentProcessId
-    if ($explorerId -eq $currentProcessParentId) {
-        $currentInterface = (Get-process -id $pid).Name
-    } else {
-        $currentInterface = (Get-process -id $currentProcessParentId).Name
-    }
-    if ($Name) {
-        return $currentInterface
-    }
-    if ($Id) {
-        if ($currentInterface -eq "WindowsTerminal") {return $currentProcessParentId} else {return $pid}
-    }
+    $oldTitle = $host.ui.RawUI.WindowTitle
+    $tempTitle = (New-Guid).guid
+    $host.ui.RawUI.WindowTitle = $tempTitle
+    start-sleep 1
+    $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $TempTitle }
+    $host.ui.RawUI.WindowTitle = $oldTitle
+    if ($name) {return $currentProcess.Name}
+    if ($id) {return $currentProcess.Id}
 }
 
 function ExitWithDelay {
@@ -906,8 +900,8 @@ $osVersion = Get-OSInfo
 $arch = $osVersion.Architecture
 
 # Get current process module name to determine if launched in conhost
-$currentInterfaceName = Get-CurrentInterface -Name
-$currentInterfaceId = Get-CurrentInterface -Id
+$currentProcessName = Get-CurrentProcess -Name
+$currentProcessId = Get-CurrentProcess -Id
 
 # If it's a workstation, make sure it is Windows 10+
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -lt 10) {
@@ -939,7 +933,7 @@ if (Get-WingetStatus) {
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
     Write-Warning "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
-    if ($CurrentInterfaceName -eq "WindowsTerminal") {
+    if ($CurrentProcessName -eq "WindowsTerminal") {
         Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
         Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
@@ -964,7 +958,7 @@ if ($ForceClose) {
         }
 
         # Stop the current process module
-        Stop-Process -id $CurrentInterfaceId
+        Stop-Process -id $currentProcessId
     }
 }
 
