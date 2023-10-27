@@ -11,4 +11,4 @@ The following versions are currently supported.
 
 ## Reporting a Vulnerability
 
-If you find a security issue, please email winget [at] asheroto [dot] com.
+If you find a security/vulnerability/privacy issue, please email winget [at] asheroto [dot] com.
