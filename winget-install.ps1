@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.2
+.VERSION 3.2.3
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -36,6 +36,7 @@
 [Version 3.2.0] - Added -ForceClose logic to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation. Improved verbiage on winget already installed.
 [Version 3.2.1] - Fixed minor glitch when using -Version or -Help parameters.
 [Version 3.2.2] - Improved script exit functionality.
+[Version 3.2.3] - Improved -ForceClose window handling with x86 PowerShell process.
 
 #>
 
@@ -65,7 +66,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.2
+	Version      : 3.2.3
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -83,7 +84,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.2.2'
+$CurrentVersion = '3.2.3'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -803,6 +804,22 @@ function Install-Prerequisite {
 }
 
 function Get-CurrentProcess {
+    <#
+        .SYNOPSIS
+            Retrieves the current PowerShell process information.
+
+        .DESCRIPTION
+            The Get-CurrentProcess function identifies the current PowerShell process by temporarily changing the console window title. It then filters the list of running processes to find the one with the matching window title. The function returns a custom object containing the Name and Id of the current process.
+
+        .EXAMPLE
+            PS C:\> $result = Get-CurrentProcess
+            PS C:\> Write-Output $result
+
+            This example demonstrates how to call the Get-CurrentProcess function and store its output in a variable named $result. The output is then displayed using Write-Output.
+
+        .NOTES
+            The function temporarily changes the console window title. Ensure no other scripts or processes are dependent on the window title during execution. The function uses a 1-second sleep to allow time for the window title change to take effect. This may vary based on system performance.
+    #>
     $oldTitle = $host.ui.RawUI.WindowTitle
     $tempTitle = (New-Guid).guid
     $host.ui.RawUI.WindowTitle = $tempTitle
@@ -810,7 +827,7 @@ function Get-CurrentProcess {
     $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $tempTitle }
     $currentProcess = [PSCustomObject]@{
         Name = $currentProcess.Name
-	Id = $currentProcess.Id
+        Id   = $currentProcess.Id
     }
     $host.ui.RawUI.WindowTitle = $oldTitle
     return $currentProcess
@@ -951,7 +968,7 @@ if ($ForceClose) {
             } else {
                 Start-Process -FilePath "$env:windir\sysnative\conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
             }
-	} else {
+        } else {
             Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
         }
 
