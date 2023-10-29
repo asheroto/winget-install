@@ -821,7 +821,7 @@ function Get-CurrentProcess {
             The function temporarily changes the console window title. Ensure no other scripts or processes are dependent on the window title during execution. The function uses a 1-second sleep to allow time for the window title change to take effect. This may vary based on system performance.
     #>
     $oldTitle = $host.ui.RawUI.WindowTitle
-    $tempTitle = (New-Guid).guid
+    $tempTitle = ([Guid]::NewGuid())
     $host.ui.RawUI.WindowTitle = $tempTitle
     start-sleep 1
     $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $tempTitle }
