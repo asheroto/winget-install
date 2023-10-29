@@ -802,27 +802,18 @@ function Install-Prerequisite {
     }
 }
 
-function Get-CurrentProcessModuleName {
-    <#
-        .SYNOPSIS
-            Gets the module name of the current PowerShell process.
-
-        .DESCRIPTION
-            This function retrieves the window title of the current PowerShell host, finds the corresponding process, and returns the name of the main module of that process without the file extension.
-
-        .EXAMPLE
-            $processName = Get-CurrentProcessModuleName
-            This example shows how to use the function to get the module name of the current process and store it in a variable.
-
-        .NOTES
-            This function assumes that the window title is unique to the current PowerShell session. If multiple windows have the same title, the function may not behave as expected.
-    #>
-
-    $windowTitle = $host.ui.RawUI.WindowTitle
-    $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $windowTitle }
-    $moduleNameWithExtension = $currentProcess.MainModule.ModuleName
-    $moduleNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($moduleNameWithExtension)
-    return $moduleNameWithoutExtension
+function Get-CurrentProcess {
+    $oldTitle = $host.ui.RawUI.WindowTitle
+    $tempTitle = (New-Guid).guid
+    $host.ui.RawUI.WindowTitle = $tempTitle
+    start-sleep 1
+    $currentProcess = Get-Process | Where-Object { $_.MainWindowTitle -eq $tempTitle }
+    $currentProcess = [PSCustomObject]@{
+        Name = $currentProcess.Name
+	Id = $currentProcess.Id
+    }
+    $host.ui.RawUI.WindowTitle = $oldTitle
+    return $currentProcess
 }
 
 function ExitWithDelay {
@@ -908,7 +899,7 @@ $osVersion = Get-OSInfo
 $arch = $osVersion.Architecture
 
 # Get current process module name to determine if launched in conhost
-$currentProcessModuleName = Get-CurrentProcessModuleName
+$currentProcess = Get-CurrentProcess
 
 # If it's a workstation, make sure it is Windows 10+
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -lt 10) {
@@ -940,7 +931,7 @@ if (Get-WingetStatus) {
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
     Write-Warning "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
-    if ($currentProcessModuleName -eq "WindowsTerminal") {
+    if ($currentProcess.Name -eq "WindowsTerminal") {
         Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
         Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
@@ -954,10 +945,18 @@ if ($ForceClose) {
         if ($DebugMode -and !($command -imatch '\s-DebugMode\b')) { $command += " -DebugMode" }
 
         # Relaunch in conhost
-        Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
+        if ([Environment]::Is64BitOperatingSystem) {
+            if ([Environment]::Is64BitProcess) {
+                Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
+            } else {
+                Start-Process -FilePath "$env:windir\sysnative\conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
+            }
+	} else {
+            Start-Process -FilePath "conhost.exe" -ArgumentList "powershell -ExecutionPolicy Bypass -Command &{$command}" -Verb RunAs
+        }
 
         # Stop the current process module
-        Stop-Process -Name $currentProcessModuleName
+        Stop-Process -id $currentProcess.Id
     }
 }
 
