@@ -80,7 +80,8 @@ param (
     [switch]$CheckForUpdate,
     [switch]$UpdateSelf,
     [switch]$Version,
-    [switch]$Help
+    [switch]$Help,
+    [switch]$NoExit
 )
 
 # Version
@@ -858,7 +859,7 @@ function ExitWithDelay {
 
     Write-Output "`nWaiting for $Seconds seconds before exiting..."
     Start-Sleep -Seconds $Seconds
-    exit $ExitCode
+    if (!$NoExit) {exit $ExitCode}
 }
 
 function Import-GlobalVariable {
