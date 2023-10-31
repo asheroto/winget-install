@@ -857,9 +857,13 @@ function ExitWithDelay {
         [int]$Seconds = 10
     )
 
-    Write-Output "`nWaiting for $Seconds seconds before exiting..."
-    Start-Sleep -Seconds $Seconds
-    if (!$NoExit) {exit $ExitCode}
+    if ($NoExit) {
+    	Write-Warning "NoExit parameter is specified."
+     } else {
+        Write-Output "`nWaiting for $Seconds seconds before exiting..."
+        Start-Sleep -Seconds $Seconds
+        exit $ExitCode
+    }
 }
 
 function Import-GlobalVariable {
