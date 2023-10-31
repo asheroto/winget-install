@@ -955,7 +955,8 @@ if ($ForceClose) {
     Write-Warning "ForceClose parameter is specified. Conflicting processes will be closed automatically!"
     if ($currentProcess.Name -eq "WindowsTerminal") {
         Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
-        Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
+        if ($NoExit) {Write-Warning "NoExit and ForceClose parameters are not compatible in Windows Terminal."}
+	Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
         Start-Sleep -Seconds 10
 
         # Prepare the command to relaunch
