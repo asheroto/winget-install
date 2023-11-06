@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.3
+.VERSION 3.2.4
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -37,6 +37,7 @@
 [Version 3.2.1] - Fixed minor glitch when using -Version or -Help parameters.
 [Version 3.2.2] - Improved script exit functionality.
 [Version 3.2.3] - Improved -ForceClose window handling with x86 PowerShell process.
+[Version 3.2.4] - Improved verbiage for incompatible systems. Added importing Appx module on Windows Server with PowerShell 7+ systems to avoid error message.
 
 #>
 
@@ -66,7 +67,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.3
+	Version      : 3.2.4
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -84,7 +85,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.2.3'
+$CurrentVersion = '3.2.4'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -630,6 +631,20 @@ function Install-Prerequisite {
     }
     try {
         # ============================================================================ #
+        # Import Appx module on Windows Server and PowerShell version 7+
+        # ============================================================================ #
+        # This is to avoid the following error:
+        #       The 'Add-AppxPackage' command was found in the module 'Appx', but the module could not be loaded due to the following error:
+        #       [Operation is not supported on this platform. (0x80131539)]
+        if ($osVersion.Type -eq "Server" -and $PSVersionTable.PSVersion.Major -ge 7) {
+            if ($DebugMode) { Write-Output "Server OS with PowerShell 7+ was detected, importing Appx module..." }
+            Import-Module Appx -UseWindowsPowerShell *>$null;
+        } else {
+            if ($DebugMode) { Write-Output "Server OS with PowerShell 7+ was not detected, skipping Appx module import..." }
+        }
+        if ($DebugMmode) { Write-Output "" }
+
+        # ============================================================================ #
         # Windows 10 / Server 2022 detection
         # ============================================================================ #
 
@@ -920,19 +935,19 @@ $currentProcess = Get-CurrentProcess
 
 # If it's a workstation, make sure it is Windows 10+
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -lt 10) {
-    Write-Error "winget is only compatible with Windows 10 or greater."
+    Write-Error "winget requires Windows 10 or later on workstations. Your version of Windows is not supported."
     ExitWithDelay 1
 }
 
 # If it's a workstation with Windows 10, make sure it's version 1809 or greater
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -eq 10 -and $osVersion.ReleaseId -lt 1809) {
-    Write-Error "winget is only compatible with Windows 10 version 1809 or greater."
+    Write-Error "winget requires Windows 10 version 1809 or later on workstations. Please update Windows to a compatible version."
     ExitWithDelay 1
 }
 
 # If it's a server, it needs to be 2022+
 if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
-    Write-Error "winget is only compatible with Windows Server 2022+."
+    Write-Error "winget requires Windows Server 2022 or newer on server platforms. Your version of Windows Server is not supported."
     ExitWithDelay 1
 }
 
