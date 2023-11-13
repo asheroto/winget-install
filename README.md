@@ -109,7 +109,7 @@ If you just need to run the basic script without any parameters, you can use the
 irm asheroto.com/winget | iex
 ```
 
-Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` or by setting `$Force` with this method, but if you absolutely need to use a one-line command with parameters, you can use the following:
+Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` with this method. If setting `$Force` globally does not work either and you absolutely need to use a one-line command with parameters, you can use the following:
 
 ```powershell
 &([ScriptBlock]::Create((irm asheroto.com/winget))) -Force
