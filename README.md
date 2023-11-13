@@ -109,7 +109,7 @@ If you just need to run the basic script without any parameters, you can use the
 irm asheroto.com/winget | iex
 ```
 
-Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` with this method. You can set the global variable `$Force` to `$true` and the script should pick up on it ([more info](#global-variables)), but if for some reason that doesn't work or you absolutely need to use a one-line command with parameters, you can use the following:
+Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` with this command line. You can set the global variable `$Force` to `$true` and the script should pick up on it ([more info](#global-variables)), but if for some reason that doesn't work or you absolutely need to use a one-line command with parameters, you can use the following:
 
 ```powershell
 &([ScriptBlock]::Create((irm asheroto.com/winget))) -Force
