@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.4
+.VERSION 3.2.5
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -38,6 +38,7 @@
 [Version 3.2.2] - Improved script exit functionality.
 [Version 3.2.3] - Improved -ForceClose window handling with x86 PowerShell process.
 [Version 3.2.4] - Improved verbiage for incompatible systems. Added importing Appx module on Windows Server with PowerShell 7+ systems to avoid error message.
+[Version 3.2.5] - Removed pause after script completion. Added optional Wait parameter to force script to wait several seconds for script output.
 
 #>
 
@@ -67,7 +68,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.4
+	Version      : 3.2.5
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -79,13 +80,14 @@ param (
     [switch]$Force,
     [switch]$ForceClose,
     [switch]$CheckForUpdate,
+    [switch]$Wait,
     [switch]$UpdateSelf,
     [switch]$Version,
     [switch]$Help
 )
 
 # Version
-$CurrentVersion = '3.2.4'
+$CurrentVersion = '3.2.5'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -851,17 +853,21 @@ function Get-CurrentProcess {
 function ExitWithDelay {
     <#
         .SYNOPSIS
-            Exits the script with a specified exit code after a 10-second delay.
+            Exits the script with a specified exit code after a specified delay, 10 seconds by default.
 
         .DESCRIPTION
-            This function takes an exit code as an argument, waits for 10 seconds, and then exits the script with the given exit code.
+            This function takes an exit code as an argument, waits for 10 seconds unless specified, and then exits the script with the given exit code.
 
         .PARAMETER ExitCode
             The exit code to use when exiting the script.
 
         .EXAMPLE
             ExitWithDelay -ExitCode 1
-            Waits for 10 seconds and then exits the script with an exit code of 1.
+            Waits for 10 seconds (default) and then exits the script with an exit code of 1.
+
+       .EXAMPLE
+            ExitWithDelay -ExitCode 2 -Seconds 5
+            Waits for 5 seconds and then exits the script with an exit code of 2.
         .NOTES
             Use this function to introduce a delay before exiting the script, allowing time for any cleanup or logging activities.
     #>
@@ -871,8 +877,21 @@ function ExitWithDelay {
         [int]$Seconds = 10
     )
 
-    Write-Output "`nWaiting for $Seconds seconds before exiting..."
-    Start-Sleep -Seconds $Seconds
+    # If Wait is specified, wait for x seconds before exiting
+    if ($script:Wait) {
+        # Debug mode output
+        if ($DebugMode) {
+            Write-Warning "Wait specified, waiting several seconds..."
+        } else {
+            Write-Warning "Wait not specified, exiting immediately..."
+        }
+
+        # Waiting for x seconds output
+        Write-Output "`nWaiting for $Seconds seconds before exiting..."
+        Start-Sleep -Seconds $Seconds
+    }
+
+    # Exit the script
     exit $ExitCode
 }
 
