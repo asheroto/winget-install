@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.5
+.VERSION 3.2.6
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -39,6 +39,7 @@
 [Version 3.2.3] - Improved -ForceClose window handling with x86 PowerShell process.
 [Version 3.2.4] - Improved verbiage for incompatible systems. Added importing Appx module on Windows Server with PowerShell 7+ systems to avoid error message.
 [Version 3.2.5] - Removed pause after script completion. Added optional Wait parameter to force script to wait several seconds for script output.
+[Version 3.2.6] - Improved ExitWithDelay function. Sometimes PowerShell will close the window accidentally, even when using the proper 'exit' command. Adjusted several closures for improved readability. Improved error code checking. Fixed glitch with -Wait param.
 
 #>
 
@@ -68,7 +69,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.5
+	Version      : 3.2.6
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -87,7 +88,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.2.5'
+$CurrentVersion = '3.2.6'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -508,6 +509,11 @@ function Handle-Error {
         Write-Warning "Resources modified are in-use. Try closing Windows Terminal / PowerShell / Command Prompt and try again."
         Write-Warning "Windows Terminal sometimes has trouble installing winget. If you are using Windows Terminal and the problem persists, run the script with the -ForceClose parameter which will relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation. Please note that using the -ForceClose parameter will close the PowerShell window and could break custom scripts that rely on the current PowerShell session."
         return $ErrorRecord
+    } elseif ($ErrorRecord.Exception.Message -match '0x80073CF3') {
+        # Prerequisite not detected, tell user to run it again
+        Write-Warning "Problem with one of the prerequisites."
+        Write-Warning "Try running the script again which usually fixes the issue. If the problem persists, try running the script with the -ForceClose parameter which will relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation. Please note that using the -ForceClose parameter will close the PowerShell window and could break custom scripts that rely on the current PowerShell session."
+        return $ErrorRecord
     } elseif ($ErrorRecord.Exception.Message -match 'Unable to connect to the remote server') {
         Write-Warning "Cannot connect to the Internet to download the required files."
         Write-Warning "Try running the script again and make sure you are connected to the Internet."
@@ -693,7 +699,11 @@ function Install-Prerequisite {
             Write-Output "URL: ${url}`n"
         }
         Write-Output "Installing ${arch} ${Name}..."
-        if ($ForceClose) { Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown } else { Add-AppxPackage $url -ErrorAction Stop }
+        if ($ForceClose) {
+            Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown
+        } else {
+            Add-AppxPackage $url -ErrorAction Stop
+        }
         Write-Output "`n$Name installed successfully."
     } catch {
         # Alternate method
@@ -725,7 +735,11 @@ function Install-Prerequisite {
                     Write-Output "URL: $($url)`n"
                 }
                 Write-Output "Installing ${arch} ${Name}..."
-                if ($ForceClose) { Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown } else { Add-AppxPackage $url -ErrorAction Stop }
+                if ($ForceClose) {
+                    Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown
+                } else {
+                    Add-AppxPackage $url -ErrorAction Stop
+                }
                 Write-Output "`n$Name installed successfully."
             }
 
@@ -778,7 +792,11 @@ function Install-Prerequisite {
                 # Install
                 Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
                     if ($DebugMode) { Write-Output "Installing appx Package: $($_.Name)" }
-                    if ($ForceClose) { Add-AppxPackage $_.FullName -ErrorAction Stop -ForceApplicationShutdown } else { Add-AppxPackage $_.FullName -ErrorAction Stop }
+                    if ($ForceClose) {
+                        Add-AppxPackage $_.FullName -ErrorAction Stop -ForceApplicationShutdown
+                    } else {
+                        Add-AppxPackage $_.FullName -ErrorAction Stop
+                    }
                 }
                 Write-Output "`nUI.Xaml installed successfully."
 
@@ -877,22 +895,24 @@ function ExitWithDelay {
         [int]$Seconds = 10
     )
 
-    # If Wait is specified, wait for x seconds before exiting
-    if ($script:Wait) {
-        # Debug mode output
-        if ($DebugMode) {
-            Write-Warning "Wait specified, waiting several seconds..."
-        } else {
-            Write-Warning "Wait not specified, exiting immediately..."
-        }
+    # Debug mode output
+    if ($DebugMode -and $Wait) {
+        Write-Warning "Wait specified, waiting several seconds..."
+    } elseif ($DebugMode -and !$Wait) {
+        Write-Warning "Wait not specified, exiting immediately..."
+    }
 
+    # If Wait is specified, wait for x seconds before exiting
+    if ($Wait) {
         # Waiting for x seconds output
         Write-Output "`nWaiting for $Seconds seconds before exiting..."
         Start-Sleep -Seconds $Seconds
     }
 
-    # Exit the script
-    exit $ExitCode
+    # Exit the script with error code
+    # Some systems may accidentally close the window, but that's a PowerShell bug
+    # https://stackoverflow.com/questions/67593504/why-wont-the-exit-function-work-in-my-powershell-code
+    Exit $ExitCode
 }
 
 function Import-GlobalVariable {
