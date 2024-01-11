@@ -179,4 +179,4 @@ winget-install
 
 ## Contributing
 
-If you're like to help develop this project: fork the repo, edit the code, then submit a pull request. 😊
+If you'd like to help develop this project: fork the repo, edit the code, then submit a pull request. 😊
