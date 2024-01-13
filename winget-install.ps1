@@ -40,7 +40,7 @@
 [Version 3.2.4] - Improved verbiage for incompatible systems. Added importing Appx module on Windows Server with PowerShell 7+ systems to avoid error message.
 [Version 3.2.5] - Removed pause after script completion. Added optional Wait parameter to force script to wait several seconds for script output.
 [Version 3.2.6] - Improved ExitWithDelay function. Sometimes PowerShell will close the window accidentally, even when using the proper 'exit' command. Adjusted several closures for improved readability. Improved error code checking. Fixed glitch with -Wait param.
-[Version 3.2.7] - Addded ability to install for all users.
+[Version 3.2.7] - Addded ability to install for all users. Added checks for Windows Sandbox and administrative privileges.
 
 #>
 
@@ -1031,6 +1031,60 @@ function Import-GlobalVariable {
     }
 }
 
+function Test-Sandbox {
+    <#
+        .SYNOPSIS
+            Tests if the current process is running in Windows Sandbox. Returns $true if running in Windows Sandbox, $false otherwise.
+        .DESCRIPTION
+            Tests if the current process is running in Windows Sandbox. Returns $true if running in Windows Sandbox, $false otherwise.
+        .EXAMPLE
+            Test-Sandbox
+    #>
+
+    function Test-WindowsSandboxByUsername {
+        try {
+            $currentUsername = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            return $currentUsername -like "*WDAGUtilityAccount*"
+        } catch {
+            Write-Warning "Error occurred in Test-Sandbox > Test-WindowsSandboxByUsername: $_"
+            return $false
+        }
+    }
+
+    function Test-WindowsSandboxByProcess {
+        try {
+            $sandboxProcessName = "CExecSvc"
+            $processExists = Get-Process $sandboxProcessName -ErrorAction SilentlyContinue
+            return $null -ne $processExists
+        } catch {
+            Write-Warning "Error occurred in Test-Sandbox > Test-WindowsSandboxByProcess: $_"
+            return $false
+        }
+    }
+
+    return (Test-WindowsSandboxByProcess) -or (Test-WindowsSandboxByUsername)
+}
+
+function Test-AdminPrivileges {
+    <#
+    .SYNOPSIS
+        Checks if the script is running with Administrator privileges. Returns $true if running with Administrator privileges, $false otherwise.
+
+    .DESCRIPTION
+        This function checks if the current PowerShell session is running with Administrator privileges by examining the role of the current user. It returns $true if the current user is an Administrator, $false otherwise.
+
+    .EXAMPLE
+        Test-AdminPrivileges
+
+    .NOTES
+        This function is particularly useful for scripts that require elevated permissions to run correctly.
+    #>
+    if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        return $true
+    }
+    return $false
+}
+
 # ============================================================================ #
 # Initial checks
 # ============================================================================ #
@@ -1051,6 +1105,18 @@ if ($UpdateSelf) { UpdateSelf }
 
 # Heading
 Write-Output "To check for updates, run winget-install -CheckForUpdate"
+
+# Check if the current user is an administrator
+if (-not (Test-AdminPrivileges)) {
+    Write-Warning "winget requires Administrator privileges to install. Please run the script as an Administrator and try again."
+    ExitWithDelay 1
+}
+
+# If it's Windows Sandbox, explain it doesn't work
+if (Test-Sandbox) {
+    Write-Warning "winget does not work in Windows Sandbox."
+    ExitWithDelay 1
+}
 
 # Get OS version
 $osVersion = Get-OSInfo
