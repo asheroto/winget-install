@@ -819,17 +819,6 @@ try {
     }
 
     # ============================================================================ #
-    # Register winget
-    # ============================================================================ #
-    Write-Section "Registering"
-    try {
-        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
-        Write-Output "winget command registered successfully."
-    } catch {
-        Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
-    }
-
-    # ============================================================================ #
     #  Done
     # ============================================================================ #
 
@@ -849,9 +838,25 @@ try {
     if (Get-WingetStatus -eq $true) {
         Write-Output "winget is installed and working now, you can go ahead and use it."
     } else {
-        Write-Warning "winget is installed but is not detected as a command. Try using winget now. If it doesn't work, wait about 1 minute and try again (it is sometimes delayed). Also try restarting your computer."
-        Write-Warning "If you restart your computer and the command still isn't recognized, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
-        Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate"
+        # ============================================================================ #
+        # Register winget
+        # ============================================================================ #
+
+        # If winget is not detected as a command, try registering it
+        Write-Section "Registering"
+        try {
+            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+            Write-Output "winget command registered successfully."
+        } catch {
+            Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
+        }
+
+        # If winget is still not detected as a command, show warning
+        if (Get-WingetStatus -eq $false) {
+            Write-Warning "winget is installed but is not detected as a command. Try using winget now. If it doesn't work, wait about 1 minute and try again (it is sometimes delayed). Also try restarting your computer."
+            Write-Warning "If you restart your computer and the command still isn't recognized, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
+            Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate"
+        }
     }
 
     ExitWithDelay 0
