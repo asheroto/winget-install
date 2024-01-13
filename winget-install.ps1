@@ -419,55 +419,6 @@ function Get-WingetStatus {
     return $false
 }
 
-function Update-PathEnvironmentVariable {
-    <#
-        .SYNOPSIS
-        Updates the PATH environment variable with a new path for both the User and Machine levels.
-
-        .DESCRIPTION
-        The function will add a new path to the PATH environment variable, making sure it is not a duplicate.
-        If the new path is already in the PATH variable, the function will skip adding it.
-        This function operates at both User and Machine levels.
-
-        .PARAMETER NewPath
-        The new directory path to be added to the PATH environment variable.
-
-        .EXAMPLE
-        Update-PathEnvironmentVariable -NewPath "C:\NewDirectory"
-        This command will add the directory "C:\NewDirectory" to the PATH variable at both the User and Machine levels.
-    #>
-    param(
-        [string]$NewPath
-    )
-
-    foreach ($Level in "Machine", "User") {
-        # Get the current PATH variable
-        $path = [Environment]::GetEnvironmentVariable("PATH", $Level)
-
-        # Check if the new path is already in the PATH variable
-        if (!$path.Contains($NewPath)) {
-            if ($Debug) {
-                Write-Debug "Adding $NewPath to PATH variable for $Level..."
-            } else {
-                Write-Output "Adding PATH variable for $Level..."
-            }
-
-            # Add the new path to the PATH variable
-            $path = ($path + ";" + $NewPath).Split(';') | Select-Object -Unique
-            $path = $path -join ';'
-
-            # Set the new PATH variable
-            [Environment]::SetEnvironmentVariable("PATH", $path, $Level)
-        } else {
-            if ($Debug) {
-                Write-Output "$NewPath already present in PATH variable for $Level, skipping."
-            } else {
-                Write-Output "PATH variable already present for $Level, skipping."
-            }
-        }
-    }
-}
-
 function Handle-Error {
     <#
         .SYNOPSIS
@@ -870,10 +821,10 @@ try {
     # ============================================================================ #
     # Register winget
     # ============================================================================ #
-    Write-Section "Registering winget"
+    Write-Section "Registering"
     try {
         Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
-        Write-Output "`winget command registered successfully."
+        Write-Output "winget command registered successfully."
     } catch {
         Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
     }
@@ -882,13 +833,13 @@ try {
     #  Done
     # ============================================================================ #
 
-    Write-Output "`nwinget installed successfully."
+    Write-Section "Complete"
+
+    Write-Output "winget installed successfully."
 
     # ============================================================================ #
     # Finished
     # ============================================================================ #
-
-    Write-Section "Installation complete!"
 
     # Timeout for 5 seconds to check winget
     Write-Output "Checking if winget is installed and working..."
