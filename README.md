@@ -132,8 +132,7 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 
 | Parameter         | Description                                                                                                                                                                                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `-DebugMode`      | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
-| `-DisableCleanup` | Disables cleanup of the script and prerequisites after installation.                                                                                                                                                                                   |
+| `-Debug`          | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
 | `-Force`          | Ensures installation of winget and its dependencies, even if already present.                                                                                                                                                                          |
 | `-ForceClose`     | Windows Terminal sometimes has trouble installing winget; run the script with the -ForceClose parameter to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation |
 | `-CheckForUpdate` | Checks if there is an update available for the script.                                                                                                                                                                                                 |
@@ -154,7 +153,7 @@ Global variables are _optional_ and are only needed if you don't want to use par
 
 | Variable      | Description                                                                                                                                                                                                                                            |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `$DebugMode`  | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
+| `$Debug`      | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
 | `$Force`      | Ensures installation of winget and its dependencies, even if already present.                                                                                                                                                                          |
 | `$ForceClose` | Windows Terminal sometimes has trouble installing winget; run the script with the -ForceClose parameter to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation |
 
@@ -171,7 +170,7 @@ winget-install
 -   If you run into an issue, please ensure your system is compatible & fully updated
 -   Sometimes PowerShell accidentally closes the window before you can read the output, so you can use the `-Wait` parameter to pause the script for a few seconds before exiting if this is happening on your system
 -   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs
--   Try using the `-DebugMode` and `-DisableCleanup` parameters to see if it provides any additional information
+-   Try using the `-Debug` parameters to see if it provides any additional information
 -   If you're getting a `resource in use` error message, run the script again with the `-ForceClose` parameter
 -   Try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
 -   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script)
