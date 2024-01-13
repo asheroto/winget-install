@@ -1180,11 +1180,7 @@ try {
     # Try to install winget
     try {
         # Add-AppxProvisionedPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
-        Write-Output "Installing winget..."
-
         Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue | Out-Null
-
-        Write-Output "`nwinget installed successfully."
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
@@ -1192,6 +1188,8 @@ try {
         }
         $errorHandled = $null
     }
+
+    Write-Output "`nwinget installed successfully."
 
     # Cleanup
     if ($DisableCleanup -eq $false) {
