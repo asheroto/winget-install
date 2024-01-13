@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.6
+.VERSION 3.2.7
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -40,6 +40,7 @@
 [Version 3.2.4] - Improved verbiage for incompatible systems. Added importing Appx module on Windows Server with PowerShell 7+ systems to avoid error message.
 [Version 3.2.5] - Removed pause after script completion. Added optional Wait parameter to force script to wait several seconds for script output.
 [Version 3.2.6] - Improved ExitWithDelay function. Sometimes PowerShell will close the window accidentally, even when using the proper 'exit' command. Adjusted several closures for improved readability. Improved error code checking. Fixed glitch with -Wait param.
+[Version 3.2.7] - Addded ability to install for all users.
 
 #>
 
@@ -69,7 +70,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.6
+	Version      : 3.2.7
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -80,6 +81,7 @@ param (
     [switch]$DisableCleanup,
     [switch]$Force,
     [switch]$ForceClose,
+    [switch]$AllUsers,
     [switch]$CheckForUpdate,
     [switch]$Wait,
     [switch]$UpdateSelf,
@@ -88,7 +90,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.2.6'
+$CurrentVersion = '3.2.7'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -581,6 +583,103 @@ function Cleanup {
     }
 }
 
+function Add-UserOrSystemAppx {
+    <#
+        .SYNOPSIS
+        Installs an appx package for the current user or all users.
+
+        .DESCRIPTION
+        This function takes a name, URL, or path and installs the appx package for the current user or all users.
+
+        .PARAMETER Name
+        The name of the appx package.
+
+        .PARAMETER URL
+        The URL of the appx package.
+
+        .PARAMETER Path
+        The path of the appx package.
+
+        .PARAMETER AllUsers
+        Installs the appx package for all users.
+
+        .PARAMETER ForceClose
+        Forces the appx package to close any open applications that could interfere with the installation.
+
+        .NOTES
+        This function uses the -AllUsers and -ForceClose variables of the winget-install.ps1 script.
+
+        .EXAMPLE
+        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
+        This example installs the appx package for the current user.
+
+        .EXAMPLE
+        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
+        This example installs the appx package for all users.
+
+        .EXAMPLE
+        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
+        This example installs the appx package for the current user and forces the appx package to close any open applications that could interfere with the installation.
+
+        .EXAMPLE
+        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
+        This example installs the appx package for all users and forces the appx
+        package to close any open applications that could interfere with the installation.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$arch,
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string]$URL,
+        [string]$Path
+    )
+
+    # Validate parameters
+    if (-not ($URL -or $Path)) {
+        throw "Either URL or Path must be specified."
+    }
+
+    if ($URL -and $Path) {
+        throw "Specify either URL or Path, not both."
+    }
+
+    # Install
+    if ($AllUsers) {
+        Write-Output "Installing ${arch} ${Name} for all users..."
+        if ($URL) {
+            $TempFile = New-TemporaryFile
+            if ($DebugMode) { Write-Output "TempFile: $TempFile" }
+            Invoke-WebRequest -Uri $URL -OutFile $TempFile
+            $packagePath = $TempFile.FullName
+        } else {
+            $packagePath = $Path
+        }
+
+        if ($DebugMode) { Write-Output "PackagePath: $packagePath" }
+
+        Add-AppxProvisionedPackage -Online -PackagePath "$packagePath" -SkipLicense | Out-Null
+
+        if ($URL) {
+            Remove-Item $TempFile
+        }
+    } else {
+        Write-Output "Installing ${arch} ${Name} for current user..."
+        $installParameters = @{
+            Path        = if ($URL) { $URL } else { $Path }
+            ErrorAction = 'Stop'
+        }
+
+        if ($ForceClose) {
+            $installParameters.Add('ForceApplicationShutdown', $true)
+        }
+
+        if ($DebugMode) { Write-Output "InstallParameters: $installParameters" }
+
+        Add-AppxPackage @installParameters
+    }
+}
+
 function Install-Prerequisite {
     <#
         .SYNOPSIS
@@ -650,7 +749,7 @@ function Install-Prerequisite {
         } else {
             if ($DebugMode) { Write-Output "Server OS with PowerShell 7+ was not detected, skipping Appx module import..." }
         }
-        if ($DebugMmode) { Write-Output "" }
+        if ($DebugMode) { Write-Output "" }
 
         # ============================================================================ #
         # Windows 10 / Server 2022 detection
@@ -698,12 +797,10 @@ function Install-Prerequisite {
         if ($DebugMode) {
             Write-Output "URL: ${url}`n"
         }
-        Write-Output "Installing ${arch} ${Name}..."
-        if ($ForceClose) {
-            Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown
-        } else {
-            Add-AppxPackage $url -ErrorAction Stop
-        }
+
+        # Install
+        Add-UserOrSystemAppx -arch $arch -Name $Name -URL $url
+
         Write-Output "`n$Name installed successfully."
     } catch {
         # Alternate method
@@ -734,12 +831,9 @@ function Install-Prerequisite {
                 if ($DebugMode) {
                     Write-Output "URL: $($url)`n"
                 }
-                Write-Output "Installing ${arch} ${Name}..."
-                if ($ForceClose) {
-                    Add-AppxPackage $url -ErrorAction Stop -ForceApplicationShutdown
-                } else {
-                    Add-AppxPackage $url -ErrorAction Stop
-                }
+
+                Add-UserOrSystemAppx -arch $arch -Name $Name -URL $url
+
                 Write-Output "`n$Name installed successfully."
             }
 
@@ -782,7 +876,6 @@ function Install-Prerequisite {
                 [IO.Compression.ZipFile]::ExtractToDirectory($uiXaml.nupkgFilename, $uiXaml.nupkgFolder)
 
                 # Prep for install
-                Write-Output "Installing ${arch} ${Name}..."
                 $XamlAppxFolder = Join-Path -Path $uiXaml.nupkgFolder -ChildPath $uiXaml.appxFolder
                 $XamlAppxPath = Join-Path -Path $XamlAppxFolder -ChildPath $uiXaml.appxFilename
 
@@ -792,11 +885,7 @@ function Install-Prerequisite {
                 # Install
                 Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
                     if ($DebugMode) { Write-Output "Installing appx Package: $($_.Name)" }
-                    if ($ForceClose) {
-                        Add-AppxPackage $_.FullName -ErrorAction Stop -ForceApplicationShutdown
-                    } else {
-                        Add-AppxPackage $_.FullName -ErrorAction Stop
-                    }
+                    Add-UserOrSystemAppx -arch $arch -Name $Name -Path $_.FullName
                 }
                 Write-Output "`nUI.Xaml installed successfully."
 
@@ -1090,8 +1179,11 @@ try {
 
     # Try to install winget
     try {
-        # Add-AppxPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
+        # Add-AppxProvisionedPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
+        Write-Output "Installing winget..."
+
         Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue | Out-Null
+
         Write-Output "`nwinget installed successfully."
     } catch {
         $errorHandled = Handle-Error $_
