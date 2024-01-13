@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 3.2.7
+.VERSION 4.0.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -41,6 +41,7 @@
 [Version 3.2.5] - Removed pause after script completion. Added optional Wait parameter to force script to wait several seconds for script output.
 [Version 3.2.6] - Improved ExitWithDelay function. Sometimes PowerShell will close the window accidentally, even when using the proper 'exit' command. Adjusted several closures for improved readability. Improved error code checking. Fixed glitch with -Wait param.
 [Version 3.2.7] - Addded ability to install for all users. Added checks for Windows Sandbox and administrative privileges.
+[Version 4.0.0] - Microsoft created some short URLs for winget. Removed a large portion of the script to use short URLs instead.
 
 #>
 
@@ -55,7 +56,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 This function should be run with administrative privileges.
 .EXAMPLE
 	winget-install
-.PARAMETER DebugMode
+.PARAMETER Debug
     Enables debug mode, which shows additional information for debugging.
 .PARAMETER DisableCleanup
     Disables cleanup of the script and prerequisites after installation.
@@ -70,18 +71,15 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 3.2.7
+	Version      : 4.0.0
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
 #>
 [CmdletBinding()]
 param (
-    [switch]$DebugMode,
-    [switch]$DisableCleanup,
     [switch]$Force,
     [switch]$ForceClose,
-    [switch]$AllUsers,
     [switch]$CheckForUpdate,
     [switch]$Wait,
     [switch]$UpdateSelf,
@@ -90,7 +88,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '3.2.7'
+$CurrentVersion = '4.0.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -98,6 +96,7 @@ $PowerShellGalleryName = 'winget-install'
 # Versions
 $ProgressPreference = 'SilentlyContinue' # Suppress progress bar (makes downloading super fast)
 $ConfirmPreference = 'None' # Suppress confirmation prompts
+$DebugPreference = 'SilentlyContinue' # Suppress debug output
 
 # Display version if -Version is specified
 if ($Version.IsPresent) {
@@ -447,8 +446,8 @@ function Update-PathEnvironmentVariable {
 
         # Check if the new path is already in the PATH variable
         if (!$path.Contains($NewPath)) {
-            if ($DebugMode) {
-                Write-Output "Adding $NewPath to PATH variable for $Level..."
+            if ($Debug) {
+                Write-Debug "Adding $NewPath to PATH variable for $Level..."
             } else {
                 Write-Output "Adding PATH variable for $Level..."
             }
@@ -460,7 +459,7 @@ function Update-PathEnvironmentVariable {
             # Set the new PATH variable
             [Environment]::SetEnvironmentVariable("PATH", $path, $Level)
         } else {
-            if ($DebugMode) {
+            if ($Debug) {
                 Write-Output "$NewPath already present in PATH variable for $Level, skipping."
             } else {
                 Write-Output "PATH variable already present for $Level, skipping."
@@ -534,62 +533,13 @@ function Handle-Error {
     $ErrorActionPreference = $OriginalErrorActionPreference
 }
 
-function Cleanup {
+function Add-Appx {
     <#
         .SYNOPSIS
-            Deletes a file or directory specified without prompting for confirmation or displaying errors.
+        Downloads and installs or installs an appx package depending on the parameters specified.
 
         .DESCRIPTION
-            This function takes a path to a file or directory and deletes it without prompting for confirmation or displaying errors.
-            If the path is a directory, the function will delete the directory and all its contents.
-
-        .PARAMETER Path
-            The path of the file or directory to be deleted.
-
-        .PARAMETER Recurse
-            If the path is a directory, this switch specifies whether to delete the directory and all its contents.
-
-        .EXAMPLE
-            Cleanup -Path "C:\Temp"
-            This example deletes the directory "C:\Temp" and all its contents.
-
-        .EXAMPLE
-            Cleanup -Path "C:\Temp" -Recurse
-            This example deletes the directory "C:\Temp" and all its contents.
-
-        .EXAMPLE
-            Cleanup -Path "C:\Temp\file.txt"
-            This example deletes the file "C:\Temp\file.txt".
-    #>
-    param (
-        [string]$Path,
-        [switch]$Recurse
-    )
-
-    try {
-        if (Test-Path -Path $Path) {
-            if ($Recurse -and (Get-Item -Path $Path) -is [System.IO.DirectoryInfo]) {
-                Get-ChildItem -Path $Path -Recurse | Remove-Item -Force -Recurse
-                Remove-Item -Path $Path -Force -Recurse
-            } else {
-                Remove-Item -Path $Path -Force
-            }
-        }
-        if ($DebugMode) {
-            Write-Output "Deleted: $Path"
-        }
-    } catch {
-        # Errors are ignored
-    }
-}
-
-function Add-UserOrSystemAppx {
-    <#
-        .SYNOPSIS
-        Installs an appx package for the current user or all users.
-
-        .DESCRIPTION
-        This function takes a name, URL, or path and installs the appx package for the current user or all users.
+        This function takes a name, URL, or path and downloads and installs or installs an appx package depending on the parameters specified.
 
         .PARAMETER Name
         The name of the appx package.
@@ -600,39 +550,18 @@ function Add-UserOrSystemAppx {
         .PARAMETER Path
         The path of the appx package.
 
-        .PARAMETER AllUsers
-        Installs the appx package for all users.
-
-        .PARAMETER ForceClose
-        Forces the appx package to close any open applications that could interfere with the installation.
-
         .NOTES
-        This function uses the -AllUsers and -ForceClose variables of the winget-install.ps1 script.
+        This function uses the -ForceClose variables of the winget-install.ps1 script.
 
         .EXAMPLE
-        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
-        This example installs the appx package for the current user.
-
-        .EXAMPLE
-        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
-        This example installs the appx package for all users.
-
-        .EXAMPLE
-        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
-        This example installs the appx package for the current user and forces the appx package to close any open applications that could interfere with the installation.
-
-        .EXAMPLE
-        Add-UserOrSystemAppx -Name "Microsoft.UI.Xaml" -URL "https://store.rg-adguard.net/api/GetFiles?type=PackageFamilyName&url=Microsoft.UI.Xaml.2.7_8wekyb3d8bbwe&ring=RP&lang=en-US"
-        This example installs the appx package for all users and forces the appx
-        package to close any open applications that could interfere with the installation.
+        Add-Appx -Name "VCLibs" -URL "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
     #>
     param (
         [Parameter(Mandatory = $true)]
-        [string]$arch,
-        [Parameter(Mandatory = $true)]
         [string]$Name,
         [string]$URL,
-        [string]$Path
+        [string]$Path,
+        [string]$LicensePath
     )
 
     # Validate parameters
@@ -645,285 +574,26 @@ function Add-UserOrSystemAppx {
     }
 
     # Install
-    if ($AllUsers) {
-        Write-Output "Installing ${arch} ${Name} for all users..."
-        if ($URL) {
-            $TempFile = New-TemporaryFile
-            if ($DebugMode) { Write-Output "TempFile: $TempFile" }
-            Invoke-WebRequest -Uri $URL -OutFile $TempFile
-            $packagePath = $TempFile.FullName
-        } else {
-            $packagePath = $Path
-        }
-
-        if ($DebugMode) { Write-Output "PackagePath: $packagePath" }
-
-        Add-AppxProvisionedPackage -Online -PackagePath "$packagePath" -SkipLicense | Out-Null
-
-        if ($URL) {
-            Remove-Item $TempFile
-        }
+    Write-Output "Installing ${arch} ${Name}..."
+    if ($URL) {
+        $TempFile = New-TemporaryFile
+        Write-Debug "TempFile: $TempFile"
+        Invoke-WebRequest -Uri $URL -OutFile $TempFile
+        $packagePath = $TempFile.FullName
     } else {
-        Write-Output "Installing ${arch} ${Name} for current user..."
-        $installParameters = @{
-            Path        = if ($URL) { $URL } else { $Path }
-            ErrorAction = 'Stop'
-        }
-
-        if ($ForceClose) {
-            $installParameters.Add('ForceApplicationShutdown', $true)
-        }
-
-        if ($DebugMode) { Write-Output "InstallParameters: $installParameters" }
-
-        Add-AppxPackage @installParameters
+        $packagePath = $Path
     }
-}
 
-function Install-Prerequisite {
-    <#
-        .SYNOPSIS
-        Downloads and installs a prerequisite for winget.
+    Write-Debug "PackagePath: $packagePath"
 
-        .DESCRIPTION
-        This function takes a name, version, URL, alternate URL, content type, and body and downloads and installs the prerequisite.
-
-        .PARAMETER Name
-        The name of the prerequisite.
-
-        .PARAMETER Version
-        The version of the prerequisite.
-
-        .PARAMETER Url
-        The URL of the prerequisite.
-
-        .PARAMETER AlternateUrl
-        The alternate URL of the prerequisite.
-
-        .PARAMETER ContentType
-        The content type of the prerequisite.
-
-        .PARAMETER Body
-        The body of the prerequisite.
-
-        .PARAMETER NupkgVersion
-        The nupkg version of the prerequisite.
-
-        .PARAMETER AppxFileVersion
-        The appx file version of the prerequisite.
-
-        .EXAMPLE
-        Install-Prerequisite -Name "VCLibs" -Version "14.00" -Url "https://store.rg-adguard.net/api/GetFiles" -AlternateUrl "https://aka.ms/Microsoft.VCLibs.$arch.14.00.Desktop.appx" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US"
-
-        Where $arch is the architecture type of the current system.
-    #>
-    param (
-        [string]$Name,
-        [string]$Url,
-        [string]$AlternateUrl,
-        [string]$ContentType,
-        [string]$Body,
-        [string]$NupkgVersion,
-        [string]$AppxFileVersion
-    )
-
-    $osVersion = Get-OSInfo
-    $arch = $osVersion.Architecture
-
-    Write-Section "Downloading & installing ${arch} ${Name}..."
-
-    $ThrowReason = @{
-        Message = ""
-        Code    = 0
+    if ($LicensePath) {
+        Add-AppxProvisionedPackage -Online -PackagePath "$packagePath" -LicensePath "$LicensePath" | Out-Null
+    } else {
+        Add-AppxProvisionedPackage -Online -PackagePath "$packagePath" -SkipLicense | Out-Null
     }
-    try {
-        # ============================================================================ #
-        # Import Appx module on Windows Server and PowerShell version 7+
-        # ============================================================================ #
-        # This is to avoid the following error:
-        #       The 'Add-AppxPackage' command was found in the module 'Appx', but the module could not be loaded due to the following error:
-        #       [Operation is not supported on this platform. (0x80131539)]
-        if ($osVersion.Type -eq "Server" -and $PSVersionTable.PSVersion.Major -ge 7) {
-            if ($DebugMode) { Write-Output "Server OS with PowerShell 7+ was detected, importing Appx module..." }
-            Import-Module Appx -UseWindowsPowerShell *>$null;
-        } else {
-            if ($DebugMode) { Write-Output "Server OS with PowerShell 7+ was not detected, skipping Appx module import..." }
-        }
-        if ($DebugMode) { Write-Output "" }
 
-        # ============================================================================ #
-        # Windows 10 / Server 2022 detection
-        # ============================================================================ #
-
-        # Function to extract domain from URL
-        function Get-DomainFromUrl($url) {
-            $uri = [System.Uri]$url
-            $domain = $uri.Host -replace "^www\."
-            return $domain
-        }
-
-        # If Server 2022 or Windows 10, force non-store version of VCLibs (return true)
-        $messageTemplate = "{OS} detected. Using {DOMAIN} version of {NAME}."
-
-        # Determine the OS-specific information
-        $osType = $osVersion.Type
-        $osNumericVersion = $osVersion.NumericVersion
-
-        if (($osType -eq "Server" -and $osNumericVersion -eq 2022) -or ($osType -eq "Workstation" -and $osNumericVersion -eq 10)) {
-            if ($osType -eq "Server") {
-                $osName = "Server 2022"
-            } else {
-                $osName = "Windows 10"
-            }
-            $domain = Get-DomainFromUrl $AlternateUrl
-            $ThrowReason.Message = ($messageTemplate -replace "{OS}", $osName) -replace "{NAME}", $Name -replace "{DOMAIN}", $domain
-            $ThrowReason.Code = 1
-            throw
-        }
-
-        # ============================================================================ #
-        # Primary method
-        # ============================================================================ #
-
-        $url = Invoke-WebRequest -Uri $Url -Method "POST" -ContentType $ContentType -Body $Body -UseBasicParsing | ForEach-Object Links | Where-Object outerHTML -match "$Name.+_${arch}__8wekyb3d8bbwe.appx" | ForEach-Object href
-
-        # If the URL is empty, try the alternate method
-        if ($url -eq "") {
-            $ThrowReason.Message = "URL is empty"
-            $ThrowReason.Code = 2
-            throw
-        }
-
-        if ($DebugMode) {
-            Write-Output "URL: ${url}`n"
-        }
-
-        # Install
-        Add-UserOrSystemAppx -arch $arch -Name $Name -URL $url
-
-        Write-Output "`n$Name installed successfully."
-    } catch {
-        # Alternate method
-        if ($_.Exception.Message -match '0x80073D02') {
-            # If resources in use exception, fail immediately
-            Handle-Error $_
-            throw
-        }
-
-        try {
-            $url = $AlternateUrl
-
-            # Throw reason if alternate method is required
-            if ($ThrowReason.Code -eq 0) {
-                Write-Warning "Error when trying to download or install $Name. Trying alternate method..."
-            } else {
-                Write-Warning $ThrowReason.Message
-            }
-            Write-Output ""
-
-            # If the URL is empty, throw error
-            if ($url -eq "") {
-                throw "URL is empty"
-            }
-
-            # Specific logic for VCLibs alternate method
-            if ($Name -eq "VCLibs") {
-                if ($DebugMode) {
-                    Write-Output "URL: $($url)`n"
-                }
-
-                Add-UserOrSystemAppx -arch $arch -Name $Name -URL $url
-
-                Write-Output "`n$Name installed successfully."
-            }
-
-            # Specific logic for UI.Xaml
-            if ($Name -eq "UI.Xaml") {
-                $TempFolder = Get-TempFolder
-
-                $uiXaml = @{
-                    url           = $url
-                    appxFolder    = "tools/AppX/$arch/Release/"
-                    appxFilename  = "Microsoft.UI.Xaml.$AppxFileVersion.appx"
-                    nupkgFilename = Join-Path -Path $TempFolder -ChildPath "Microsoft.UI.Xaml.$NupkgVersion.nupkg"
-                    nupkgFolder   = Join-Path -Path $TempFolder -ChildPath "Microsoft.UI.Xaml.$NupkgVersion"
-                }
-
-                # Debug
-                if ($DebugMode) {
-                    $formattedDebugOutput = ($uiXaml | ConvertTo-Json -Depth 10 -Compress) -replace '\\\\', '\'
-                    Write-Output "uiXaml:"
-                    Write-Output $formattedDebugOutput
-                    Write-Output ""
-                }
-
-                # Downloading
-                Write-Output "Downloading UI.Xaml..."
-                if ($DebugMode) {
-                    Write-Output "URL: $($uiXaml.url)"
-                }
-                Invoke-WebRequest -Uri $uiXaml.url -OutFile $uiXaml.nupkgFilename
-
-                # Check if folder exists and delete if needed (will occur whether DisableCleanup is $true or $false)
-                Cleanup -Path $uiXaml.nupkgFolder -Recurse
-
-                # Extracting
-                Write-Output "Extracting...`n"
-                if ($DebugMode) {
-                    Write-Output "Into folder: $($uiXaml.nupkgFolder)`n"
-                }
-                Add-Type -Assembly System.IO.Compression.FileSystem
-                [IO.Compression.ZipFile]::ExtractToDirectory($uiXaml.nupkgFilename, $uiXaml.nupkgFolder)
-
-                # Prep for install
-                $XamlAppxFolder = Join-Path -Path $uiXaml.nupkgFolder -ChildPath $uiXaml.appxFolder
-                $XamlAppxPath = Join-Path -Path $XamlAppxFolder -ChildPath $uiXaml.appxFilename
-
-                # Debugging
-                if ($DebugMode) { Write-Output "Installing appx Packages in: $XamlAppxFolder" }
-
-                # Install
-                Get-ChildItem -Path $XamlAppxPath -Filter *.appx | ForEach-Object {
-                    if ($DebugMode) { Write-Output "Installing appx Package: $($_.Name)" }
-                    Add-UserOrSystemAppx -arch $arch -Name $Name -Path $_.FullName
-                }
-                Write-Output "`nUI.Xaml installed successfully."
-
-                # Cleanup
-                if ($DisableCleanup -eq $false) {
-                    if ($DebugMode) { Write-Output "" } # Extra line break for readability if DebugMode is enabled
-                    Cleanup -Path $uiXaml.nupkgFilename
-                    Cleanup -Path $uiXaml.nupkgFolder -Recurse $true
-                }
-            }
-        } catch {
-            # If unable to connect to remote server and Windows 10 or Server 2022, display warning message
-            $ShowOldVersionMessage = $False
-            if ($_.Exception.Message -match "Unable to connect to the remote server") {
-                # Determine the correct Windows caption and set $ShowOutput to $True if conditions are met
-                if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -eq 10) {
-                    $WindowsCaption = "Windows 10"
-                    $ShowOldVersionMessage = $True
-                } elseif ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -eq 2022) {
-                    $WindowsCaption = "Server 2022"
-                    $ShowOldVersionMessage = $True
-                }
-
-                # Output the warning message if $ShowOldVersionMessage is $True, otherwise output the generic error message
-                if ($ShowOldVersionMessage) {
-                    $OldVersionMessage = "There is an issue connecting to the server to download $Name. Unfortunately this is a known issue with the prerequisite server URLs - sometimes they are down. Since you're using $WindowsCaption you must use the non-store versions of the prerequisites, the prerequisites from the Windows store will not work, so you may need to try again later or install manually."
-                    Write-Warning $OldVersionMessage
-                } else {
-                    Write-Warning "Error when trying to download or install $Name. Please try again later or manually install $Name."
-                }
-            }
-
-            $errorHandled = Handle-Error $_
-            if ($null -ne $errorHandled) {
-                throw $errorHandled
-            }
-            $errorHandled = $null
-        }
+    if ($URL) {
+        Remove-Item $TempFile
     }
 }
 
@@ -985,9 +655,9 @@ function ExitWithDelay {
     )
 
     # Debug mode output
-    if ($DebugMode -and $Wait) {
+    if ($Debug -and $Wait) {
         Write-Warning "Wait specified, waiting several seconds..."
-    } elseif ($DebugMode -and !$Wait) {
+    } elseif ($Debug -and !$Wait) {
         Write-Warning "Wait not specified, exiting immediately..."
     }
 
@@ -1031,40 +701,6 @@ function Import-GlobalVariable {
     }
 }
 
-function Test-Sandbox {
-    <#
-        .SYNOPSIS
-            Tests if the current process is running in Windows Sandbox. Returns $true if running in Windows Sandbox, $false otherwise.
-        .DESCRIPTION
-            Tests if the current process is running in Windows Sandbox. Returns $true if running in Windows Sandbox, $false otherwise.
-        .EXAMPLE
-            Test-Sandbox
-    #>
-
-    function Test-WindowsSandboxByUsername {
-        try {
-            $currentUsername = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-            return $currentUsername -like "*WDAGUtilityAccount*"
-        } catch {
-            Write-Warning "Error occurred in Test-Sandbox > Test-WindowsSandboxByUsername: $_"
-            return $false
-        }
-    }
-
-    function Test-WindowsSandboxByProcess {
-        try {
-            $sandboxProcessName = "CExecSvc"
-            $processExists = Get-Process $sandboxProcessName -ErrorAction SilentlyContinue
-            return $null -ne $processExists
-        } catch {
-            Write-Warning "Error occurred in Test-Sandbox > Test-WindowsSandboxByProcess: $_"
-            return $false
-        }
-    }
-
-    return (Test-WindowsSandboxByProcess) -or (Test-WindowsSandboxByUsername)
-}
-
 function Test-AdminPrivileges {
     <#
     .SYNOPSIS
@@ -1090,7 +726,7 @@ function Test-AdminPrivileges {
 # ============================================================================ #
 
 # Use global variables if specified by user
-Import-GlobalVariable -VariableName "DebugMode"
+Import-GlobalVariable -VariableName "Debug"
 Import-GlobalVariable -VariableName "ForceClose"
 Import-GlobalVariable -VariableName "Force"
 
@@ -1109,12 +745,6 @@ Write-Output "To check for updates, run winget-install -CheckForUpdate"
 # Check if the current user is an administrator
 if (-not (Test-AdminPrivileges)) {
     Write-Warning "winget requires Administrator privileges to install. Please run the script as an Administrator and try again."
-    ExitWithDelay 1
-}
-
-# If it's Windows Sandbox, explain it doesn't work
-if (Test-Sandbox) {
-    Write-Warning "winget does not work in Windows Sandbox."
     ExitWithDelay 1
 }
 
@@ -1168,7 +798,7 @@ if ($ForceClose) {
         # Append parameters if their corresponding variables are $true and not already in the command
         if ($Force -and !($command -imatch '\s-Force\b')) { $command += " -Force" }
         if ($ForceClose -and !($command -imatch '\s-ForceClose\b')) { $command += " -ForceClose" }
-        if ($DebugMode -and !($command -imatch '\s-DebugMode\b')) { $command += " -DebugMode" }
+        if ($Debug -and !($command -imatch '\s-Debug\b')) { $command += " -Debug" }
 
         # Relaunch in conhost
         if ([Environment]::Is64BitOperatingSystem) {
@@ -1195,58 +825,14 @@ try {
     # Install prerequisites
     # ============================================================================ #
 
-    # VCLibs
-    Install-Prerequisite -Name "VCLibs" -Version "14.00" -Url "https://store.rg-adguard.net/api/GetFiles" -AlternateUrl "https://aka.ms/Microsoft.VCLibs.$arch.14.00.Desktop.appx" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US"
+    Write-Section "Prerequisites"
 
-    # UI.Xaml
-    Install-Prerequisite -Name "UI.Xaml" -Version "2.7.3" -Url "https://store.rg-adguard.net/api/GetFiles" -AlternateUrl "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.7.3" -ContentType "application/x-www-form-urlencoded" -Body "type=ProductId&url=9P5VK8KZB5QZ&ring=RP&lang=en-US" -NupkgVersion "2.7.3" -AppxFileVersion "2.7"
-
-    # ============================================================================ #
-    # Install winget
-    # ============================================================================ #
-
-    $TempFolder = Get-TempFolder
-
-    # Output
-    Write-Section "Downloading & installing winget..."
-
-    Write-Output "Retrieving download URL for winget from GitHub..."
-    $wingetUrl = Get-WingetDownloadUrl -Match "msixbundle"
-    $wingetPath = Join-Path -Path $tempFolder -ChildPath "winget.msixbundle"
-    $wingetLicenseUrl = Get-WingetDownloadUrl -Match "License1.xml"
-    $wingetLicensePath = Join-Path -Path $tempFolder -ChildPath "license1.xml"
-
-    # If the URL is empty, throw error
-    if ($wingetUrl -eq "") {
-        throw "URL is empty"
-    }
-
-    Write-Output "Downloading winget..."
-    if ($DebugMode) {
-        Write-Output "`nURL: $wingetUrl"
-        Write-Output "Saving as: $wingetPath"
-    }
-    Invoke-WebRequest -Uri $wingetUrl -OutFile $wingetPath
-
-    Write-Output "Downloading license..."
-    if ($DebugMode) {
-        Write-Output "`nURL: $wingetLicenseUrl"
-        Write-Output "Saving as: $wingetLicensePath"
-    }
-    Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
-
-    Write-Output "`nInstalling winget..."
-
-    # Debugging
-    if ($DebugMode) {
-        Write-Output "wingetPath: $wingetPath"
-        Write-Output "wingetLicensePath: $wingetLicensePath"
-    }
-
-    # Try to install winget
     try {
-        # Add-AppxProvisionedPackage will throw an error if the app is already installed or higher version installed, so we need to catch it and continue
-        Add-AppxProvisionedPackage -Online -PackagePath $wingetPath -LicensePath $wingetLicensePath -ErrorAction SilentlyContinue | Out-Null
+        # VCLibs
+        Add-Appx -Name "VCLibs" -URL "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
+
+        # UI.Xaml
+        Add-Appx -Name "UI.Xaml" -URL "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.7.3/Microsoft.UI.Xaml.2.7.${arch}.appx"
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
@@ -1255,34 +841,48 @@ try {
         $errorHandled = $null
     }
 
-    Write-Output "`nwinget installed successfully."
+    # ============================================================================ #
+    #  winget
+    # ============================================================================ #
 
-    # Cleanup
-    if ($DisableCleanup -eq $false) {
-        if ($DebugMode) { Write-Output "" } # Extra line break for readability if DebugMode is enabled
-        Cleanup -Path $wingetPath
-        Cleanup -Path $wingetLicensePath
+    Write-Section "winget"
+
+    # winget
+    try {
+        # Prep
+        $tempFolder = Get-TempFolder
+
+        # Download license
+        $wingetLicenseUrl = Get-WingetDownloadUrl -Match "License1.xml"
+        $wingetLicensePath = Join-Path -Path $tempFolder -ChildPath "License1.xml"
+        Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
+
+        # Install winget
+        Add-Appx -Name "winget" -URL "https://aka.ms/getwinget" -LicensePath $wingetLicensePath
+    } catch {
+        $errorHandled = Handle-Error $_
+        if ($null -ne $errorHandled) {
+            throw $errorHandled
+        }
+        $errorHandled = $null
     }
-
-    # ============================================================================ #
-    # PATH environment variable
-    # ============================================================================ #
-
-    # Add the WindowsApps directory to the PATH variable
-    Write-Section "Checking and adding WindowsApps directory to PATH variable for current user if not present..."
-    $WindowsAppsPath = [IO.Path]::Combine([Environment]::GetEnvironmentVariable("LOCALAPPDATA"), "Microsoft", "WindowsApps")
-    Update-PathEnvironmentVariable -NewPath $WindowsAppsPath
 
     # ============================================================================ #
     # Register winget
     # ============================================================================ #
-    Write-Section "Registering winget..."
+    Write-Section "Registering winget"
     try {
         Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
         Write-Output "`winget command registered successfully."
     } catch {
         Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
     }
+
+    # ============================================================================ #
+    #  Done
+    # ============================================================================ #
+
+    Write-Output "`nwinget installed successfully."
 
     # ============================================================================ #
     # Finished
@@ -1315,7 +915,7 @@ try {
 
     # If it's not 0x80073D02 (resources in use), show error
     if ($_.Exception.Message -notmatch '0x80073D02') {
-        if ($DebugMode) {
+        if ($Debug) {
             Write-Warning "Line number : $($_.InvocationInfo.ScriptLineNumber)"
         }
         Write-Warning "Error: $($_.Exception.Message)`n"
