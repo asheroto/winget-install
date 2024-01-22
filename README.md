@@ -106,6 +106,8 @@ The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to t
 
 If you just need to run the basic script without any parameters, you can use the following one-line command:
 
+#### Option A:
+
 ```powershell
 irm asheroto.com/winget | iex
 ```
@@ -114,6 +116,28 @@ Due to the nature of how PowerShell works, you won't be able to use any paramete
 
 ```powershell
 &([ScriptBlock]::Create((irm asheroto.com/winget))) -Force
+```
+
+#### Option B:
+
+To make it easier to remember, you can also use the URL [winget.pro](https://winget.pro) which redirects to the same URL. This URL is provided courtesy of [Omaha Consulting](https://github.com/omaha-consulting).
+
+```powershell
+irm winget.pro | iex
+```
+
+Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` with this command line. You can set the global variable `$Force` to `$true` and the script should pick up on it ([more info](#global-variables)), but if for some reason that doesn't work or you absolutely need to use a one-line command with parameters, you can use the following:
+
+```powershell
+&([ScriptBlock]::Create((irm winget.pro))) -Force
+```
+
+#### Option C:
+
+Alternatively, you can of course use the latest code-signed release URL directly:
+
+```powershell
+irm https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1 | iex
 ```
 
 ### Method 3 - Download Locally and Run
