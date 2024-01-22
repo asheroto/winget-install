@@ -1,6 +1,3 @@
-> [!NOTE]
-> Microsoft came out with some short URLs to install winget. We're working on an update which will make use of these. This will reduce the size of the script by 42%. Coming this month, Jan 2024.
-
 ![winget Windows 10](https://github.com/asheroto/winget-install/assets/49938263/f2fa626b-c4b6-4bd4-871c-814754d8ca0e)
 
 [![Release](https://img.shields.io/github/v/release/asheroto/winget-install)](https://github.com/asheroto/winget-install/releases)
