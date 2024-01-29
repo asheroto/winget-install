@@ -95,7 +95,6 @@ $PowerShellGalleryName = 'winget-install'
 
 # Versions
 $ProgressPreference = 'SilentlyContinue' # Suppress progress bar (makes downloading super fast)
-$DebugPreference = 'Continue' # Show debug messages
 $ConfirmPreference = 'None' # Suppress confirmation prompts
 
 # Display version if -Version is specified
@@ -114,6 +113,12 @@ if ($Help) {
 if ($PSBoundParameters.ContainsKey('Verbose') -and $PSBoundParameters['Verbose']) {
     $PSVersionTable
     Get-Host
+}
+
+# Set debug preferences if -Debug is specified
+if ($PSBoundParameters.ContainsKey('Debug') -and $PSBoundParameters['Debug']) {
+    $DebugPreference = 'Continue'
+    $ConfirmPreference = 'None'
 }
 
 function Get-TempFolder {
@@ -743,19 +748,19 @@ try {
 
     # winget
     try {
-        # Download winget
-        $winget_path = New-TemporaryFile
-        $winget_url = "https://aka.ms/getwinget"
-        Write-Output "Downloading winget..."
-        Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
-        Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
-
         # Download winget license
         $winget_license_path = New-TemporaryFile
         $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml"
         Write-Output "Downloading winget license..."
         Write-Debug "Downloading winget license from $winget_license_url to $winget_license_path`n`n"
         Invoke-WebRequest -Uri $winget_license_url -OutFile $winget_license_path
+
+        # Download winget
+        $winget_path = New-TemporaryFile
+        $winget_url = "https://aka.ms/getwinget"
+        Write-Output "Downloading winget..."
+        Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
+        Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
 
         # Install everything
         Write-Output "Installing winget and its dependencies..."
