@@ -41,7 +41,7 @@
 [Version 3.2.5] - Removed pause after script completion. Added optional Wait parameter to force script to wait several seconds for script output.
 [Version 3.2.6] - Improved ExitWithDelay function. Sometimes PowerShell will close the window accidentally, even when using the proper 'exit' command. Adjusted several closures for improved readability. Improved error code checking. Fixed glitch with -Wait param.
 [Version 3.2.7] - Addded ability to install for all users. Added checks for Windows Sandbox and administrative privileges.
-[Version 4.0.0] - Microsoft created some short URLs for winget. Removed a large portion of the script to use short URLs instead.
+[Version 4.0.0] - Microsoft created some short URLs for winget. Removed a large portion of the script to use short URLs instead. Simplified and refactored. Switched debug param from DebugMode to Debug.
 
 #>
 
@@ -95,8 +95,8 @@ $PowerShellGalleryName = 'winget-install'
 
 # Versions
 $ProgressPreference = 'SilentlyContinue' # Suppress progress bar (makes downloading super fast)
+$DebugPreference = 'Continue' # Show debug messages
 $ConfirmPreference = 'None' # Suppress confirmation prompts
-$DebugPreference = 'SilentlyContinue' # Suppress debug output
 
 # Display version if -Version is specified
 if ($Version.IsPresent) {
@@ -375,7 +375,6 @@ function Get-WingetDownloadUrl {
     )
 
     $uri = "https://api.github.com/repos/microsoft/winget-cli/releases"
-    Write-Debug "Getting information from $uri"
     $releases = Invoke-RestMethod -uri $uri -Method Get -ErrorAction stop
 
     Write-Debug "Getting latest release..."
@@ -482,70 +481,6 @@ function Handle-Error {
 
     # Reset to original value
     $ErrorActionPreference = $OriginalErrorActionPreference
-}
-
-function Add-Appx {
-    <#
-        .SYNOPSIS
-        Downloads and installs or installs an appx package depending on the parameters specified.
-
-        .DESCRIPTION
-        This function takes a name, URL, or path and downloads and installs or installs an appx package depending on the parameters specified.
-
-        .PARAMETER Name
-        The name of the appx package.
-
-        .PARAMETER URL
-        The URL of the appx package.
-
-        .PARAMETER Path
-        The path of the appx package.
-
-        .NOTES
-        This function uses the -ForceClose variables of the winget-install.ps1 script.
-
-        .EXAMPLE
-        Add-Appx -Name "VCLibs" -URL "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
-    #>
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$Name,
-        [string]$URL,
-        [string]$Path,
-        [string]$LicensePath
-    )
-
-    # Validate parameters
-    if (-not ($URL -or $Path)) {
-        throw "Either URL or Path must be specified."
-    }
-
-    if ($URL -and $Path) {
-        throw "Specify either URL or Path, not both."
-    }
-
-    # Install
-    Write-Output "Installing ${arch} ${Name}..."
-    if ($URL) {
-        $TempFile = New-TemporaryFile
-        Write-Debug "TempFile: $TempFile"
-        Invoke-WebRequest -Uri $URL -OutFile $TempFile
-        $packagePath = $TempFile.FullName
-    } else {
-        $packagePath = $Path
-    }
-
-    Write-Debug "PackagePath: $packagePath"
-
-    if ($LicensePath) {
-        Add-AppxProvisionedPackage -Online -PackagePath "$packagePath" -LicensePath "$LicensePath" | Out-Null
-    } else {
-        Add-AppxProvisionedPackage -Online -PackagePath "$packagePath" -SkipLicense | Out-Null
-    }
-
-    if ($URL) {
-        Remove-Item $TempFile
-    }
 }
 
 function Get-CurrentProcess {
@@ -779,11 +714,19 @@ try {
     Write-Section "Prerequisites"
 
     try {
-        # VCLibs
-        Add-Appx -Name "VCLibs" -URL "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
+        # Download VCLibs
+        $VCLibs_Path = New-TemporaryFile
+        $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
+        Write-Output "Downloading VCLibs..."
+        Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
+        Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
 
-        # UI.Xaml
-        Add-Appx -Name "UI.Xaml" -URL "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.7.3/Microsoft.UI.Xaml.2.7.${arch}.appx"
+        # Download UI.Xaml
+        $UIXaml_Path = New-TemporaryFile
+        $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.7.3/Microsoft.UI.Xaml.2.7.${arch}.appx"
+        Write-Output "Downloading UI.Xaml..."
+        Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path`n"
+        Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
@@ -800,16 +743,29 @@ try {
 
     # winget
     try {
-        # Prep
-        $tempFolder = Get-TempFolder
+        # Download winget
+        $winget_path = New-TemporaryFile
+        $winget_url = "https://aka.ms/getwinget"
+        Write-Output "Downloading winget..."
+        Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
+        Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
 
-        # Download license
-        $wingetLicenseUrl = Get-WingetDownloadUrl -Match "License1.xml"
-        $wingetLicensePath = Join-Path -Path $tempFolder -ChildPath "License1.xml"
-        Invoke-WebRequest -Uri $wingetLicenseUrl -OutFile $wingetLicensePath
+        # Download winget license
+        $winget_license_path = New-TemporaryFile
+        $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml"
+        Write-Output "Downloading winget license..."
+        Write-Debug "Downloading winget license from $winget_license_url to $winget_license_path`n`n"
+        Invoke-WebRequest -Uri $winget_license_url -OutFile $winget_license_path
 
-        # Install winget
-        Add-Appx -Name "winget" -URL "https://aka.ms/getwinget" -LicensePath $wingetLicensePath
+        # Install everything
+        Write-Output "Installing winget and its dependencies..."
+        Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
+
+        # Remove
+        Remove-Item $VCLibs_Path
+        Remove-Item $UIXaml_Path
+        Remove-Item $winget_path
+        Remove-Item $winget_license_path
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
