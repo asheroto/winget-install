@@ -121,20 +121,6 @@ if ($PSBoundParameters.ContainsKey('Debug') -and $PSBoundParameters['Debug']) {
     $ConfirmPreference = 'None'
 }
 
-function Get-TempFolder {
-    <#
-        .SYNOPSIS
-        Gets the path of the current user's temp folder.
-
-        .DESCRIPTION
-        This function retrieves the path of the current user's temp folder.
-
-        .EXAMPLE
-        Get-TempFolder
-    #>
-    return [System.IO.Path]::GetTempPath()
-}
-
 function Get-OSInfo {
     <#
         .SYNOPSIS
