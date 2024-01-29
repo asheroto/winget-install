@@ -65,9 +65,14 @@
 
 ## Setup
 
-**Note:** For a stable experience, use one of the methods listed below (#1, #2, or #3) to fetch the latest version. **Using the version directly from the GitHub repository is not advised**, as it could be under active development and not fully stable.
-
 ### Method 1 - PowerShell Gallery
+
+> [!TIP]
+>If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
+>```powershell
+>Install-PackageProvider -Name "NuGet" -Force
+>Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+>```
 
 **This is the recommended method, because it always gets the public release that has been tested, it's easy to remember, and supports all parameters.**
 
@@ -90,15 +95,6 @@ winget-install
 If `winget` is already installed, you can use the `-Force` parameter to force the script to run anyway.
 
 The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
-
-#### Tip - How to trust PSGallery
-
-If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
-
-```powershell
-Install-PackageProvider -Name "NuGet" -Force
-Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
-```
 
 ### Method 2 - One Line Command (Runs Immediately)
 
@@ -149,6 +145,9 @@ As a more conventional approach, download the latest [winget-install.ps1](https:
 ```
 
 You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force = $true` and `$ForceClose = $true` global session variables if preferred.
+
+> [!TIP]
+> If for some reason your PowerShell window closes at the end of the script and you don't want it to, or don't want your other scripts to be interrupted, you can wrap the command in a `powershell -command "COMMAND HERE"`. For example, `powershell -command "irm asheroto.com/winget | iex"`.
 
 ## Parameters
 
