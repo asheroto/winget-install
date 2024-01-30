@@ -21,6 +21,7 @@
     -   Windows 10 (Version 1809 or higher)
     -   Windows 11
     -   Server 2022
+    -   Windows Sandbox
 -   Not compatible with:
     -   Server 2019 (winget not supported)
 
@@ -41,65 +42,14 @@
 -   Identifies processor architecture to decide which prerequisites are needed (x86/x64 or arm/arm64)
 -   Checks Windows OS version for compatibility (Windows 10, Windows 11, Server 2022)
 -   Verifies Windows 10 release ID for compatibility (must be 1809 or newer)
--   Manages prerequisite versions based on OS:
-    -   Forces older versions on Windows 10 and Server 2022
-    -   Uses latest versions from Microsoft Store on Windows 11
--   Executes winget registration command on Windows 10
--   [VCLibs](https://docs.microsoft.com/en-gb/troubleshoot/developer/visualstudio/cpp/libraries/c-runtime-packages-desktop-bridge#how-to-install-and-update-desktop-framework-packages) is installed straight from the appx package
-    -   Primary method
-        -   If Windows 10 or Server 2022, alternate method is forced so that older version of prerequisite is used (newer version is not compatible)
-        -   Determines the direct download URL for the **appx** package
-        -   Installs **appx** package using direct download URL
-    -   Alternate method (if primary download URL fails)
-        -   Uses version 14.00 for compatibility reasons
-        -   Installs **appx** package using aka.ms URL
--   [UI.Xaml](https://www.nuget.org/packages/Microsoft.UI.Xaml/) is installed
-    -   Primary method
-        -   If Windows 10 or Server 2022, alternate method is forced so that older version of prerequisite is used (newer version is not compatible)
-        -   Determines the direct download URL for the **appx** package
-        -   Installs **appx** package using direct download URL
-    -   Alternate method (if primary download URL fails)
-        -   Uses version 2.7.3 for compatibility reasons
-        -   Downloads **nupkg** package using nuget.org URL
-        -   Extracts **appx** package from **nupkg** package
-        -   Installs **appx** package using extracted **appx** package
+-   Uses the UI.Xaml and VCLibs as [recommended by Microsoft](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox)
+-   The winget-cli license is downloaded using the latest version from GitHub
 -   [winget-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
--   Machine & User **PATH** variables are adjusted to include WindowsApps folder if needed
+-   Runs command registration if the `winget` command is not detected at the end of installation
 
 ## Setup
 
-### Method 1 - PowerShell Gallery
-
-> [!TIP]
->If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
->```powershell
->Install-PackageProvider -Name "NuGet" -Force
->Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
->```
-
-**This is the recommended method, because it always gets the public release that has been tested, it's easy to remember, and supports all parameters.**
-
-Open PowerShell as Administrator and type
-
-```powershell
-Install-Script winget-install -Force
-```
-
-Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
-
-**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated. If you do not use `-Force`, it will _not_ overwrite the script if outdated.
-
-#### Usage
-
-```powershell
-winget-install
-```
-
-If `winget` is already installed, you can use the `-Force` parameter to force the script to run anyway.
-
-The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
-
-### Method 2 - One Line Command (Runs Immediately)
+### Method 1 - One Line Command (Runs Immediately)
 
 The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to the [latest code-signed release](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) of the script.
 
@@ -138,6 +88,37 @@ Alternatively, you can of course use the latest code-signed release URL directly
 ```powershell
 irm https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1 | iex
 ```
+
+### Method 2 - PowerShell Gallery
+
+> [!TIP]
+>If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
+>```powershell
+>Install-PackageProvider -Name "NuGet" -Force
+>Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+>```
+
+**This is the recommended method, because it always gets the public release that has been tested, it's easy to remember, and supports all parameters.**
+
+Open PowerShell as Administrator and type
+
+```powershell
+Install-Script winget-install -Force
+```
+
+Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
+
+**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated. If you do not use `-Force`, it will _not_ overwrite the script if outdated.
+
+#### Usage
+
+```powershell
+winget-install
+```
+
+If `winget` is already installed, you can use the `-Force` parameter to force the script to run anyway.
+
+The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
 
 ### Method 3 - Download Locally and Run
 
