@@ -12,7 +12,7 @@
 **winget, a command line package manager, doesn't have a command line installer? 🤣 Now it does! 😊**
 
 > [!NOTE]
-> Microsoft released some new short URLs that work well for installing winget! We're currently testing v4 of the script which is a vastly consolidated version from the one here. If you want to try out the new script check out [PR #36](https://github.com/asheroto/winget-install/pull/36).
+> Microsoft released some new short URLs that work well for installing winget. This is the new script that is smaller and faster at installing winget!
 
 ## Requirements
 
