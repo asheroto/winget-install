@@ -150,7 +150,7 @@ As a more conventional approach, download the latest [winget-install.ps1](https:
 You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force = $true` and `$ForceClose = $true` global session variables if preferred.
 
 > [!TIP]
-> If for some reason your PowerShell window closes at the end of the script and you don't want it to, or don't want your other scripts to be interrupted, you can wrap the command in a `powershell -command "COMMAND HERE"`. For example, `powershell -command "irm asheroto.com/winget | iex"`.
+> If for some reason your PowerShell window closes at the end of the script and you don't want it to, or don't want your other scripts to be interrupted, you can wrap the command in a `powershell "COMMAND HERE"`. For example, `powershell "irm asheroto.com/winget | iex"`.
 
 ## Parameters
 
