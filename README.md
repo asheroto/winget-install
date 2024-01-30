@@ -3,7 +3,7 @@
 [![GitHub Downloads - All Releases](https://img.shields.io/github/downloads/asheroto/winget-install/total)](https://github.com/asheroto/winget-install/releases)
 [![Release](https://img.shields.io/github/v/release/asheroto/winget-install)](https://github.com/asheroto/winget-install/releases)
 [![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/asheroto/winget-install)](https://github.com/asheroto/winget-install/releases)
-![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/winget-install?label=PowerShell%20Gallery%20downloads)
+[![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/winget-install?label=PowerShell%20Gallery%20downloads)](https://www.powershellgallery.com/packages/winget-install)
 
 [![GitHub Sponsor](https://img.shields.io/github/sponsors/asheroto?label=Sponsor&logo=GitHub)](https://github.com/sponsors/asheroto?frequency=one-time&sponsor=asheroto)
 <a href="https://ko-fi.com/asheroto"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Ko-Fi Button" height="20px"></a>
