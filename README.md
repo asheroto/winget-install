@@ -49,7 +49,38 @@
 
 ## Setup
 
-### Method 1 - One Line Command (Runs Immediately)
+### Method 1 - PowerShell Gallery
+
+> [!TIP]
+>If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
+>```powershell
+>Install-PackageProvider -Name "NuGet" -Force
+>Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+>```
+
+**This is the recommended method, because it always gets the public release that has been tested, it's easy to remember, and supports all parameters.**
+
+Open PowerShell as Administrator and type
+
+```powershell
+Install-Script winget-install -Force
+```
+
+Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
+
+**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated. If you do not use `-Force`, it will _not_ overwrite the script if outdated.
+
+#### Usage
+
+```powershell
+winget-install
+```
+
+If `winget` is already installed, you can use the `-Force` parameter to force the script to run anyway.
+
+The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
+
+### Method 2 - One Line Command (Runs Immediately)
 
 The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to the [latest code-signed release](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) of the script.
 
@@ -88,37 +119,6 @@ Alternatively, you can of course use the latest code-signed release URL directly
 ```powershell
 irm https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1 | iex
 ```
-
-### Method 2 - PowerShell Gallery
-
-> [!TIP]
->If you want to trust PSGallery so you aren't prompted each time you run this command, or if you're scripting this and want to ensure the script isn't interrupted the first time it runs...
->```powershell
->Install-PackageProvider -Name "NuGet" -Force
->Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
->```
-
-**This is the recommended method, because it always gets the public release that has been tested, it's easy to remember, and supports all parameters.**
-
-Open PowerShell as Administrator and type
-
-```powershell
-Install-Script winget-install -Force
-```
-
-Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
-
-**Note:** `-Force` is optional but recommended, as it will force the script to update if it is outdated. If you do not use `-Force`, it will _not_ overwrite the script if outdated.
-
-#### Usage
-
-```powershell
-winget-install
-```
-
-If `winget` is already installed, you can use the `-Force` parameter to force the script to run anyway.
-
-The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
 
 ### Method 3 - Download Locally and Run
 
