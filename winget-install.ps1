@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.0.0
+.VERSION 4.0.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -42,18 +42,17 @@
 [Version 3.2.6] - Improved ExitWithDelay function. Sometimes PowerShell will close the window accidentally, even when using the proper 'exit' command. Adjusted several closures for improved readability. Improved error code checking. Fixed glitch with -Wait param.
 [Version 3.2.7] - Addded ability to install for all users. Added checks for Windows Sandbox and administrative privileges.
 [Version 4.0.0] - Microsoft created some short URLs for winget. Removed a large portion of the script to use short URLs instead. Simplified and refactored. Switched debug param from DebugMode to Debug.
+[Version 4.0.1] - Fixed PowerShell help information.
 
 #>
 
 <#
 .SYNOPSIS
-	Downloads and installs the latest version of winget and its dependencies. Updates the PATH variable if needed.
+	Downloads and installs the latest version of winget and its dependencies.
 .DESCRIPTION
-	Downloads and installs the latest version of winget and its dependencies. Updates the PATH variable if needed.
+	Downloads and installs the latest version of winget and its dependencies.
 
-This script is designed to be straightforward and easy to use, removing the hassle of manually downloading, installing, and configuring winget. To make the newly installed winget available for use, a system reboot may be required after running the script.
-
-This function should be run with administrative privileges.
+This script is designed to be straightforward and easy to use, removing the hassle of manually downloading, installing, and configuring winget. This function should be run with administrative privileges.
 .EXAMPLE
 	winget-install
 .PARAMETER Debug
@@ -62,6 +61,10 @@ This function should be run with administrative privileges.
     Disables cleanup of the script and prerequisites after installation.
 .PARAMETER Force
     Ensures installation of winget and its dependencies, even if already present.
+.PARAMETER ForceClose
+    Relaunches the script in conhost.exe and automatically ends active processes associated with winget that could interfere with the installation.
+.PARAMETER Wait
+    Forces the script to wait several seconds before exiting.
 .PARAMETER UpdateSelf
     Updates the script to the latest version on PSGallery.
 .PARAMETER CheckForUpdate
@@ -71,7 +74,7 @@ This function should be run with administrative privileges.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.0
+	Version      : 4.0.1
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -88,7 +91,7 @@ param (
 )
 
 # Version
-$CurrentVersion = '4.0.0'
+$CurrentVersion = '4.0.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
