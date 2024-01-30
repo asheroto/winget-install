@@ -708,14 +708,14 @@ try {
 
     try {
         # Download VCLibs
-        $VCLibs_Path = New-TemporaryFile
+        $VCLibs_Path = New-TemporaryFile2
         $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
         Write-Output "Downloading VCLibs..."
         Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
         Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
 
         # Download UI.Xaml
-        $UIXaml_Path = New-TemporaryFile
+        $UIXaml_Path = New-TemporaryFile2
         $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.7.3/Microsoft.UI.Xaml.2.7.${arch}.appx"
         Write-Output "Downloading UI.Xaml..."
         Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path`n"
@@ -737,14 +737,14 @@ try {
     # winget
     try {
         # Download winget license
-        $winget_license_path = New-TemporaryFile
+        $winget_license_path = New-TemporaryFile2
         $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml"
         Write-Output "Downloading winget license..."
         Write-Debug "Downloading winget license from $winget_license_url to $winget_license_path`n`n"
         Invoke-WebRequest -Uri $winget_license_url -OutFile $winget_license_path
 
         # Download winget
-        $winget_path = New-TemporaryFile
+        $winget_path = New-TemporaryFile2
         $winget_url = "https://aka.ms/getwinget"
         Write-Output "Downloading winget..."
         Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
@@ -804,7 +804,7 @@ try {
         if (Get-WingetStatus -eq $false) {
             Write-Warning "winget is installed but is not detected as a command. Try using winget now. If it doesn't work, wait about 1 minute and try again (it is sometimes delayed). Also try restarting your computer."
             Write-Warning "If you restart your computer and the command still isn't recognized, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
-            Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate"
+            Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate`n`n"
         }
     }
 
@@ -816,7 +816,7 @@ try {
 
     Write-Section "WARNING! An error occurred during installation!"
     Write-Warning "If messages above don't help and the problem persists, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting"
-    Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate"
+    Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate`n`n"
 
     # If it's not 0x80073D02 (resources in use), show error
     if ($_.Exception.Message -notmatch '0x80073D02') {
