@@ -598,6 +598,31 @@ function Test-AdminPrivileges {
     return $false
 }
 
+Function New-TemporaryFile2 {
+    <#
+    .SYNOPSIS
+        Creates a new temporary file.
+
+    .DESCRIPTION
+        This function generates a temporary file and returns the full path of the file. The New-TemporaryFile command is not available in PowerShell 5.1 and earlier so this function is a workaround.
+
+    .EXAMPLE
+        $tempFile = New-TemporaryFile2
+        This example creates a new temporary file and stores its path in the $tempFile variable.
+
+    .OUTPUTS
+        String. The full path of the created temporary file.
+    #>
+
+    # Create a temporary file
+    $tempPath = [System.IO.Path]::GetTempPath()
+    $tempFile = [System.IO.Path]::Combine($tempPath, [System.IO.Path]::GetRandomFileName())
+    $null = New-Item -Path $tempFile -ItemType File -Force
+
+    # Return the path of the temporary file
+    return $tempFile
+}
+
 # ============================================================================ #
 # Initial checks
 # ============================================================================ #
