@@ -90,13 +90,13 @@ param (
     [switch]$Help
 )
 
-# Version
+# Script information
 $CurrentVersion = '4.0.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
 
-# Versions
+# Preferences
 $ProgressPreference = 'SilentlyContinue' # Suppress progress bar (makes downloading super fast)
 $ConfirmPreference = 'None' # Suppress confirmation prompts
 
