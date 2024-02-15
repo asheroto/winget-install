@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.0.1
+.VERSION 4.0.2
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -43,6 +43,7 @@
 [Version 3.2.7] - Addded ability to install for all users. Added checks for Windows Sandbox and administrative privileges.
 [Version 4.0.0] - Microsoft created some short URLs for winget. Removed a large portion of the script to use short URLs instead. Simplified and refactored. Switched debug param from DebugMode to Debug.
 [Version 4.0.1] - Fixed PowerShell help information.
+[Version 4.0.2] - Adjusted UpdateSelf function to reset PSGallery to original state if it was not trusted. Improved comments.
 
 #>
 
@@ -72,7 +73,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.1
+	Version      : 4.0.2
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -89,7 +90,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.0.1'
+$CurrentVersion = '4.0.2'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -301,13 +302,18 @@ function UpdateSelf {
             }
 
             # Trust the PSGallery if not already trusted
-            $repo = Get-PSRepository -Name 'PSGallery'
-            if ($repo.InstallationPolicy -ne 'Trusted') {
-                Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+            $psRepoInstallationPolicy = (Get-PSRepository -Name 'PSGallery').InstallationPolicy
+            if ($psRepoInstallationPolicy -ne 'Trusted') {
+                Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted | Out-Null
             }
 
             # Update the script
             Install-Script $PowerShellGalleryName -Force
+
+            # If PSGallery was not trusted, reset it to its original state
+            if ($psRepoInstallationPolicy -ne 'Trusted') {
+                Set-PSRepository -Name 'PSGallery' -InstallationPolicy $psRepoInstallationPolicy | Out-Null
+            }
 
             Write-Output "Script updated to version $psGalleryScriptVersion."
             exit 0
