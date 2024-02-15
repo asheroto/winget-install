@@ -57,8 +57,6 @@ This script is designed to be straightforward and easy to use, removing the hass
 	winget-install
 .PARAMETER Debug
     Enables debug mode, which shows additional information for debugging.
-.PARAMETER DisableCleanup
-    Disables cleanup of the script and prerequisites after installation.
 .PARAMETER Force
     Ensures installation of winget and its dependencies, even if already present.
 .PARAMETER ForceClose
