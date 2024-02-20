@@ -811,7 +811,7 @@ try {
     # Finished
     # ============================================================================ #
 
-    # Timeout for 5 seconds to check winget
+    # Timeout before checking winget
     Write-Output "Checking if winget is installed and working..."
     Start-Sleep -Seconds 3
 
