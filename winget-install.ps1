@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.0.2
+.VERSION 4.0.3
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -44,6 +44,7 @@
 [Version 4.0.0] - Microsoft created some short URLs for winget. Removed a large portion of the script to use short URLs instead. Simplified and refactored. Switched debug param from DebugMode to Debug.
 [Version 4.0.1] - Fixed PowerShell help information.
 [Version 4.0.2] - Adjusted UpdateSelf function to reset PSGallery to original state if it was not trusted. Improved comments.
+[Version 4.0.3] - Updated UI.Xaml package as per winget-cli issue #4208.
 
 #>
 
@@ -73,7 +74,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.2
+	Version      : 4.0.3
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -90,7 +91,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.0.2'
+$CurrentVersion = '4.0.3'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -748,7 +749,7 @@ try {
 
         # Download UI.Xaml
         $UIXaml_Path = New-TemporaryFile2
-        $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.7.3/Microsoft.UI.Xaml.2.7.${arch}.appx"
+        $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.${arch}.appx"
         Write-Output "Downloading UI.Xaml..."
         Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path`n"
         Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
