@@ -45,6 +45,7 @@
 [Version 4.0.1] - Fixed PowerShell help information.
 [Version 4.0.2] - Adjusted UpdateSelf function to reset PSGallery to original state if it was not trusted. Improved comments.
 [Version 4.0.3] - Updated UI.Xaml package as per winget-cli issue #4208.
+[Version 4.0.4] - Fixed detection for Windows multi-session.
 
 #>
 
@@ -74,7 +75,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.3
+	Version      : 4.0.4
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -91,7 +92,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.0.3'
+$CurrentVersion = '4.0.4'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -194,6 +195,11 @@ function Get-OSInfo {
 
         # Extract numerical value from Name
         $numericVersion = ($nameValue -replace "[^\d]").Trim()
+
+        # If the numeric version is 10 or above, and the caption contains "multi-session", consider it a workstation
+        if ($numericVersion -ge 10 -and $osDetails.Caption -match "multi-session") {
+            $typeValue = "Workstation"
+        }
 
         # Create and return custom object with the required properties
         $result = [PSCustomObject]@{
