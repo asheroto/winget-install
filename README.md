@@ -16,6 +16,27 @@
 > [!NOTE]
 > Microsoft released some new short URLs that work well for installing winget. This is the new script that is smaller and faster at installing winget!
 
+## Table of Contents
+- [Install winget from PowerShell](#install-winget-from-powershell)
+  - [Table of Contents](#table-of-contents)
+  - [Requirements](#requirements)
+  - [Features](#features)
+  - [Script Functionality](#script-functionality)
+  - [Setup](#setup)
+    - [Method 1 - PowerShell Gallery](#method-1---powershell-gallery)
+      - [Usage](#usage)
+    - [Method 2 - One Line Command (Runs Immediately)](#method-2---one-line-command-runs-immediately)
+      - [Option A:](#option-a)
+      - [Option B:](#option-b)
+      - [Option C:](#option-c)
+    - [Method 3 - Download Locally and Run](#method-3---download-locally-and-run)
+  - [Parameters](#parameters)
+    - [Example Parameters Usage](#example-parameters-usage)
+  - [Global Variables](#global-variables)
+    - [Example Global Variables Usage](#example-global-variables-usage)
+  - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
+
 ## Requirements
 
 -   Requires PowerShell running with Administrator rights
