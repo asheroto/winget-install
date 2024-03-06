@@ -24,9 +24,9 @@
   - [Method 1 - PowerShell Gallery](#method-1---powershell-gallery)
     - [Usage](#usage)
   - [Method 2 - One Line Command (Runs Immediately)](#method-2---one-line-command-runs-immediately)
-    - [Option A:](#option-a)
-    - [Option B:](#option-b)
-    - [Option C:](#option-c)
+    - [Option A: asheroto.com short URL](#option-a-asherotocom-short-url)
+    - [Option B: winget.pro short URL](#option-b-wingetpro-short-url)
+    - [Option C: direct release URL](#option-c-direct-release-url)
   - [Method 3 - Download Locally and Run](#method-3---download-locally-and-run)
 - [Parameters](#parameters)
   - [Example Parameters Usage](#example-parameters-usage)
@@ -107,7 +107,7 @@ The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to t
 
 If you just need to run the basic script without any parameters, you can use the following one-line command:
 
-#### Option A:
+#### Option A: asheroto.com short URL
 
 ```powershell
 irm asheroto.com/winget | iex
@@ -119,7 +119,7 @@ Due to the nature of how PowerShell works, you won't be able to use any paramete
 &([ScriptBlock]::Create((irm asheroto.com/winget))) -Force
 ```
 
-#### Option B:
+#### Option B: winget.pro short URL
 
 To make it easier to remember, you can also use the URL [winget.pro](https://winget.pro) which redirects to the same URL. This URL is provided courtesy of [Omaha Consulting](https://github.com/omaha-consulting).
 
@@ -133,7 +133,7 @@ Due to the nature of how PowerShell works, you won't be able to use any paramete
 &([ScriptBlock]::Create((irm winget.pro))) -Force
 ```
 
-#### Option C:
+#### Option C: direct release URL
 
 Alternatively, you can of course use the latest code-signed release URL directly:
 
