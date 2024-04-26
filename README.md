@@ -194,16 +194,17 @@ winget-install
 
 ## Troubleshooting
 
--   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2
--   If you run into an issue, please ensure your system is compatible & fully updated
--   Sometimes PowerShell accidentally closes the window before you can read the output, so you can use the `-Wait` parameter to pause the script for a few seconds before exiting if this is happening on your system
--   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs
--   Try using the `-Debug` parameters to see if it provides any additional information
--   If you're getting a `resource in use` error message, run the script again with the `-ForceClose` parameter
--   Try [installing winget manually](https://github.com/microsoft/winget-cli#manually-update) to see if the issue exists with winget itself
--   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script)
--   Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md)
--   If the problem **only** occurs when using this script, please open an issue here
+-   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2.
+-   If you run into an issue, please ensure your system is compatible & fully updated.
+-   Sometimes PowerShell accidentally closes the window before you can read the output, so you can use the `-Wait` parameter to pause the script for a few seconds before exiting if this is happening on your system.
+-   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs.
+-   Try using the `-Debug` parameters to see if it provides any additional information.
+-   If you're getting a `resource in use` error message, run the script again with the `-ForceClose` parameter.
+-   Try [installing winget manually](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox) to see if the issue exists with winget itself.
+-   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script).
+-   Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md).
+-   Note that winget [does not support](https://github.com/microsoft/winget-cli/discussions/962) installing or running with the `SYSTEM` account. [Our tests](https://github.com/asheroto/winget-install/issues/40) also reflect this issue - even if winget is installed, it won't run properly using the `SYSTEM` account.
+-   If the problem **only** occurs when using this script, please open an issue here.
 
 ## Contributing
 
