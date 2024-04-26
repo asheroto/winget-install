@@ -18,6 +18,8 @@ body:
     label: Checklist
     description: Before continuing, make sure you have done the following.
     options:
+    - label: I have give this issue a title starting with the text `[Bug]:` to signify it is a bug.
+      required: true
     - label: I have performed the steps in the [Troubleshooting](https://github.com/asheroto/winget-install#troubleshooting) section and confirm that the issue only occurs with this script.
       required: true
     - label: |
