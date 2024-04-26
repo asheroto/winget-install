@@ -30,7 +30,7 @@ body:
         I have verified that this issue is NOT security related (please create [security advisory](https://github.com/asheroto/winget-install/security/advisories) if so).
       required: true
     - label: |
-        I have run the script with the `-DebugMode` argument and included the output below
+        I have run the script with the `-Debug` argument and included the output below
       required: true
 - type: textarea
   id: what-is-you-seeing
