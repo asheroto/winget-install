@@ -59,8 +59,8 @@ body:
     description: |
       Please include any other information here that you feel may be relevant to the problem you are seeing but is not covered in the previous sections.
 - type: textarea
-  id: output-with-debugmode
+  id: output-with-debug
   attributes:
-    label: Full Output With `-DebugMode`
+    label: Full Output With `-Debug`
     description: |
-      Please run the script with the `-DebugMode` argument and include the output below.
+      Please run the script with the `-Debug` argument and include the output below.
