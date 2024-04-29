@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.0.4
+.VERSION 4.0.5
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -46,6 +46,7 @@
 [Version 4.0.2] - Adjusted UpdateSelf function to reset PSGallery to original state if it was not trusted. Improved comments.
 [Version 4.0.3] - Updated UI.Xaml package as per winget-cli issue #4208.
 [Version 4.0.4] - Fixed detection for Windows multi-session.
+[Version 4.0.5] - Improved error handling when registering winget.
 
 #>
 
@@ -75,7 +76,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.4
+	Version      : 4.0.5
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -92,7 +93,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.0.4'
+$CurrentVersion = '4.0.5'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -380,7 +381,7 @@ function Get-WingetDownloadUrl {
     )
 
     $uri = "https://api.github.com/repos/microsoft/winget-cli/releases"
-    $releases = Invoke-RestMethod -uri $uri -Method Get -ErrorAction stop
+    $releases = Invoke-RestMethod -uri $uri -Method Get -ErrorAction Stop
 
     Write-Debug "Getting latest release..."
     foreach ($release in $releases) {
@@ -470,6 +471,9 @@ function Handle-Error {
         Write-Warning "Problem with one of the prerequisites."
         Write-Warning "Try running the script again which usually fixes the issue. If the problem persists, try running the script with the -ForceClose parameter which will relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation. Please note that using the -ForceClose parameter will close the PowerShell window and could break custom scripts that rely on the current PowerShell session."
         return $ErrorRecord
+    } elseif ($ErrorRecord.Exception.Message -match '0x80073CF9') {
+        Write-Warning "Registering winget failed with error code 0x80073CF9."
+        Write-Warning "This error usually occurs when using the Local System account to install winget. The SYSTEM account is not officially supported by winget and may not work. See the requirements section of the README. If winget is not working, run the installation script again using an Administrator account."
     } elseif ($ErrorRecord.Exception.Message -match 'Unable to connect to the remote server') {
         Write-Warning "Cannot connect to the Internet to download the required files."
         Write-Warning "Try running the script again and make sure you are connected to the Internet."
@@ -657,6 +661,7 @@ if ($UpdateSelf) { UpdateSelf }
 
 # Heading
 Write-Output "To check for updates, run winget-install -CheckForUpdate"
+Write-Output "To delay script exit, run winget-install -Wait"
 
 # Check if the current user is an administrator
 if (-not (Test-AdminPrivileges)) {
@@ -833,10 +838,15 @@ try {
         # If winget is not detected as a command, try registering it
         Write-Section "Registering"
         try {
-            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ErrorAction Stop
             Write-Output "winget command registered successfully."
         } catch {
             Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
+            $errorHandled = Handle-Error $_
+            if ($null -ne $errorHandled) {
+                throw $errorHandled
+            }
+            $errorHandled = $null
         }
 
         # If winget is still not detected as a command, show warning

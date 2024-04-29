@@ -38,6 +38,7 @@
 ## Requirements
 
 -   Requires PowerShell running with Administrator rights
+    -   winget does *not* officially support installation or use of the [SYSTEM account](https://github.com/microsoft/winget-cli/discussions/962)
 -   Compatible with:
     -   Windows 10 (Version 1809 or higher)
     -   Windows 11
@@ -203,7 +204,7 @@ winget-install
 -   Try [installing winget manually](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox) to see if the issue exists with winget itself.
 -   If the issue occurs when installing winget manually, please open an [issue on the winget-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script).
 -   Check the [winget-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md).
--   Note that winget [does not support](https://github.com/microsoft/winget-cli/discussions/962) installing or running with the `SYSTEM` account. [Our tests](https://github.com/asheroto/winget-install/issues/40) also reflect this issue - even if winget is installed, it won't run properly using the `SYSTEM` account.
+-   Note that winget [does not officially support](https://github.com/microsoft/winget-cli/discussions/962) installing or running with the `SYSTEM` account.
 -   If the problem **only** occurs when using this script, please open an issue here.
 
 ## Contributing
