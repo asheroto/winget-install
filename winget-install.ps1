@@ -455,6 +455,8 @@ function Handle-Error {
     # Set to silently continue
     $ErrorActionPreference = 'SilentlyContinue'
 
+    # Handle common errors
+    # Not returning $ErrorRecord on some errors is intentional
     if ($ErrorRecord.Exception.Message -match '0x80073D06') {
         Write-Warning "Higher version already installed."
         Write-Warning "That's okay, continuing..."
