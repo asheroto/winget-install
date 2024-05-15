@@ -539,7 +539,7 @@ function ExitWithDelay {
             ExitWithDelay -ExitCode 1
             Waits for 10 seconds (default) and then exits the script with an exit code of 1.
 
-       .EXAMPLE
+        .EXAMPLE
             ExitWithDelay -ExitCode 2 -Seconds 5
             Waits for 5 seconds and then exits the script with an exit code of 2.
         .NOTES
