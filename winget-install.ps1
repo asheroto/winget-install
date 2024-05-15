@@ -47,6 +47,7 @@
 [Version 4.0.3] - Updated UI.Xaml package as per winget-cli issue #4208.
 [Version 4.0.4] - Fixed detection for Windows multi-session.
 [Version 4.0.5] - Improved error handling when registering winget.
+[Version 4.0.6] - Added prompt to reinstall winget when it is already present.
 
 #>
 
@@ -701,9 +702,21 @@ if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
 # Check if winget is already installed
 if (Get-WingetStatus) {
     if ($Force -eq $false) {
-        Write-Warning "winget is already installed, exiting..."
-        Write-Warning "If you want to reinstall winget, run the script with the -Force parameter."
-        ExitWithDelay 0 5
+        do {
+            $userChoice = Read-Host "`nwinget is already installed. Do you want to reinstall it? (y/n)"
+            $userChoice = $userChoice.ToLower()
+            if ($userChoice -ne 'y' -and $userChoice -ne 'n') {
+                Write-Host "Invalid input. Please enter 'y' for Yes or 'n' for No."
+            }
+        } while ($userChoice -ne 'y' -and $userChoice -ne 'n')
+
+        if ($userChoice -eq 'y') {
+            Write-Host "Reinstalling winget..."
+            $command = "cd '$pwd'; $($MyInvocation.Line) -Force"
+        } else {
+            Write-Host "`nExiting without reinstalling winget.`n"
+            ExitWithDelay 0 5
+        }
     }
 }
 
