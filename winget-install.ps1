@@ -699,24 +699,31 @@ if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
     ExitWithDelay 1
 }
 
+function Wait-ForKeyPress {
+    $timer = [System.Diagnostics.Stopwatch]::StartNew()
+    $timeout = 15
+
+    Write-Warning "winget is already installed. If you want to reinstall it press 'y' to continue.`nOtherwise the script will terminate in $timeout seconds."
+
+    while ($timer.Elapsed.TotalSeconds -lt $timeout) {
+        if ([System.Console]::KeyAvailable) {
+            $key = [System.Console]::ReadKey($true).KeyChar
+            if ($key -eq 'y') {
+                Write-Host "`nReinstalling winget..."
+                return $true
+            }
+        }
+        Start-Sleep -Milliseconds 100
+    }
+
+    Write-Host "`nExiting without reinstalling winget.`n"
+    ExitWithDelay 0 5
+}
+
 # Check if winget is already installed
 if (Get-WingetStatus) {
     if ($Force -eq $false) {
-        do {
-            $userChoice = Read-Host "`nwinget is already installed. Do you want to reinstall it? (y/n)"
-            $userChoice = $userChoice.ToLower()
-            if ($userChoice -ne 'y' -and $userChoice -ne 'n') {
-                Write-Host "Invalid input. Please enter 'y' for Yes or 'n' for No."
-            }
-        } while ($userChoice -ne 'y' -and $userChoice -ne 'n')
-
-        if ($userChoice -eq 'y') {
-            Write-Host "Reinstalling winget..."
-            $command = "cd '$pwd'; $($MyInvocation.Line) -Force"
-        } else {
-            Write-Host "`nExiting without reinstalling winget.`n"
-            ExitWithDelay 0 5
-        }
+        Wait-ForKeyPress | Out-Null
     }
 }
 
