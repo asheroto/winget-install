@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.0.5
+.VERSION 4.0.6
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -77,7 +77,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.5
+	Version      : 4.0.6
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -94,7 +94,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.0.5'
+$CurrentVersion = '4.0.6'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
