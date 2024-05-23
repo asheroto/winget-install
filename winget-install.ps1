@@ -693,9 +693,9 @@ if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -eq 10 -and
     ExitWithDelay 1
 }
 
-# If it's a server, it needs to be 2016+
-if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2016) {
-    Write-Error "winget requires Windows Server 2016 or newer on server platforms. Your version of Windows Server is not supported."
+# If it's a server, it needs to be 2019+
+if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2019) {
+    Write-Error "winget requires Windows Server 2019 or newer on server platforms. Your version of Windows Server is not supported."
     ExitWithDelay 1
 }
 
