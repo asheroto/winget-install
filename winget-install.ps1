@@ -754,6 +754,14 @@ try {
     Write-Section "Prerequisites"
 
     try {
+        # Download Visual C++ Redistributable
+        $VCppRedistributable_Path = New-TemporaryFile2
+        $VCppRedistributable_Path += ".exe"
+        $VCppRedistributable_Url = "https://aka.ms/vs/16/release/vc_redist.${arch}.exe"
+        Write-Output "Downloading Visual C++ Redistributable..."
+        Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n"
+        Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
+
         # Download VCLibs
         $VCLibs_Path = New-TemporaryFile2
         $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
@@ -798,6 +806,10 @@ try {
         Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
 
         # Install everything
+
+        Write-Host "Installing Visual C++ Redistributable..."
+        Start-Process -FilePath $VCppRedistributable_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
         Write-Output "Installing winget and its dependencies..."
         Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
 
@@ -817,6 +829,7 @@ try {
         }
 
         # Remove
+        Remove-Item $VCppRedistributable_Path
         Remove-Item $VCLibs_Path
         Remove-Item $UIXaml_Path
         Remove-Item $winget_path
