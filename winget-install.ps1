@@ -754,13 +754,14 @@ try {
     Write-Section "Prerequisites"
 
     try {
-        # Download Visual C++ Redistributable
-        $VCppRedistributable_Path = New-TemporaryFile2
-        $VCppRedistributable_Path += ".exe"
-        $VCppRedistributable_Url = "https://aka.ms/vs/16/release/vc_redist.${arch}.exe"
-        Write-Output "Downloading Visual C++ Redistributable..."
-        Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n"
-        Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
+        if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
+            # Download Visual C++ Redistributable
+            $VCppRedistributable_Path = New-TemporaryFile2
+            $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
+            Write-Output "Downloading Visual C++ Redistributable..."
+            Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n"
+            Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
+        }
 
         # Download VCLibs
         $VCLibs_Path = New-TemporaryFile2
@@ -807,29 +808,33 @@ try {
 
         # Install everything
 
-        Write-Host "Installing Visual C++ Redistributable..."
-        Start-Process -FilePath $VCppRedistributable_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
-
         Write-Output "Installing winget and its dependencies..."
         Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
 
-        # If it's a server with version below 2022 we need to adjust the access rights and modify the path
+        # If it's a server with version below 2022 we need to install Visual C++ Redistributable, adjust the access rights and modify the path
         if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
-          # Fix Permissions
-          $WinGetFolderPath = "$(Resolve-Path -Path "$env:ProgramFiles\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe")" # the outer '"' surrounding $(Resolve-Path...) are essential for calling Set-Acl
-          $acl = Get-Acl $WinGetFolderPath
-          $acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")))
-          Set-Acl $WinGetFolderPath $acl
+            # Install Visual C++ Redistributable
+            $VCppRedistributableExe_Path = $VCppRedistributable_Path + ".exe"
+            Rename-Item -Path $VCppRedistributable_Path -NewName $VCppRedistributableExe_Path
+            Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
 
-          # Add Environment Path
-          $ENV:PATH += ";$WinGetFolderPath"
-          $SystemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
-          $SystemEnvPath += ";$WinGetFolderPath;"
-          setx /M PATH "$SystemEnvPath"
+            # Remove
+            Remove-Item $VCppRedistributableExe_Path
+
+            # Fix Permissions
+            $WinGetFolderPath = "$(Resolve-Path -Path ([IO.Path]::Combine($env:ProgramFiles, 'WindowsApps', 'Microsoft.DesktopAppInstaller_*_' + ${arch} + '__8wekyb3d8bbwe')))"
+            $acl = Get-Acl $WinGetFolderPath
+            $acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")))
+            Set-Acl $WinGetFolderPath $acl
+
+            # Add Environment Path
+            $ENV:PATH += ";$WinGetFolderPath"
+            $SystemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+            $SystemEnvPath += ";$WinGetFolderPath;"
+            setx /M PATH "$SystemEnvPath"
         }
 
         # Remove
-        Remove-Item $VCppRedistributable_Path
         Remove-Item $VCLibs_Path
         Remove-Item $UIXaml_Path
         Remove-Item $winget_path
