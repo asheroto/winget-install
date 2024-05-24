@@ -807,7 +807,6 @@ try {
         Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
 
         # Install everything
-
         Write-Output "Installing winget and its dependencies..."
         Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
 
