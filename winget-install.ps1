@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.0.5
+.VERSION 4.0.6
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -47,6 +47,7 @@
 [Version 4.0.3] - Updated UI.Xaml package as per winget-cli issue #4208.
 [Version 4.0.4] - Fixed detection for Windows multi-session.
 [Version 4.0.5] - Improved error handling when registering winget.
+[Version 4.0.6] - Support for Windows Server < 2022 added
 
 #>
 
@@ -76,7 +77,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.5
+	Version      : 4.0.6
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -93,7 +94,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.0.5'
+$CurrentVersion = '4.0.6'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -692,9 +693,9 @@ if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -eq 10 -and
     ExitWithDelay 1
 }
 
-# If it's a server, it needs to be 2022+
-if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
-    Write-Error "winget requires Windows Server 2022 or newer on server platforms. Your version of Windows Server is not supported."
+# If it's a server, it needs to be 2019+
+if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2019) {
+    Write-Error "winget requires Windows Server 2019 or newer on server platforms. Your version of Windows Server is not supported."
     ExitWithDelay 1
 }
 
@@ -753,6 +754,15 @@ try {
     Write-Section "Prerequisites"
 
     try {
+        if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
+            # Download Visual C++ Redistributable
+            $VCppRedistributable_Path = New-TemporaryFile2
+            $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
+            Write-Output "Downloading Visual C++ Redistributable..."
+            Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n"
+            Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
+        }
+
         # Download VCLibs
         $VCLibs_Path = New-TemporaryFile2
         $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
@@ -799,6 +809,29 @@ try {
         # Install everything
         Write-Output "Installing winget and its dependencies..."
         Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
+
+        # If it's a server with version below 2022 we need to install Visual C++ Redistributable, adjust the access rights and modify the path
+        if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
+            # Install Visual C++ Redistributable
+            $VCppRedistributableExe_Path = $VCppRedistributable_Path + ".exe"
+            Rename-Item -Path $VCppRedistributable_Path -NewName $VCppRedistributableExe_Path
+            Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
+            # Remove
+            Remove-Item $VCppRedistributableExe_Path
+
+            # Fix Permissions
+            $WinGetFolderPath = "$(Resolve-Path -Path ([IO.Path]::Combine($env:ProgramFiles, 'WindowsApps', 'Microsoft.DesktopAppInstaller_*_' + ${arch} + '__8wekyb3d8bbwe')))"
+            $acl = Get-Acl $WinGetFolderPath
+            $acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")))
+            Set-Acl $WinGetFolderPath $acl
+
+            # Add Environment Path
+            $ENV:PATH += ";$WinGetFolderPath"
+            $SystemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+            $SystemEnvPath += ";$WinGetFolderPath;"
+            setx /M PATH "$SystemEnvPath"
+        }
 
         # Remove
         Remove-Item $VCLibs_Path
