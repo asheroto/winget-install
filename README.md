@@ -38,7 +38,7 @@
 ## Requirements
 
 > [!NOTE]
-> Server 2019 is now supported thanks to [MatthiasGuelck](https://github.com/MatthiasGuelck) in PR #43.
+> Server 2019 is now supported thanks to [MatthiasGuelck](https://github.com/MatthiasGuelck) in [PR #43](https://github.com/asheroto/winget-install/pull/43).
 
 -   Requires PowerShell running with Administrator rights
     -   winget does *not* officially support installation or use of the [SYSTEM account](https://github.com/microsoft/winget-cli/discussions/962)
