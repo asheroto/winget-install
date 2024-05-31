@@ -905,7 +905,7 @@ try {
             # Add Environment Path
             Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
         } else {
-            Write-Output "WinGet folder path not found."
+            Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
         }
     }
 
