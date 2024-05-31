@@ -37,15 +37,18 @@
 
 ## Requirements
 
+> [!NOTE]
+> Server 2019 is now supported thanks to @MatthiasGuelck in PR #43.
+
 -   Requires PowerShell running with Administrator rights
     -   winget does *not* officially support installation or use of the [SYSTEM account](https://github.com/microsoft/winget-cli/discussions/962)
 -   Compatible with:
     -   Windows 10 (Version 1809 or higher)
     -   Windows 11
-    -   Server 2022
+    -   Server 2019/2022
     -   Windows Sandbox
 -   Not compatible with:
-    -   Server 2019 (winget not supported)
+    -   Server 2016 or lower (winget not supported)
 
 ## Features
 
@@ -62,11 +65,12 @@
 ## Script Functionality
 
 -   Identifies processor architecture to decide which prerequisites are needed (x86/x64 or arm/arm64)
--   Checks Windows OS version for compatibility (Windows 10, Windows 11, Server 2022)
--   Verifies Windows 10 release ID for compatibility (must be 1809 or newer)
+-   Checks Windows OS version for compatibility (Windows 10, Windows 11, Server 2019/2022)
+-   If Windows 10, verifies release ID for compatibility (must be 1809 or newer)
 -   Uses the UI.Xaml and VCLibs as [recommended by Microsoft](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox)
 -   The winget-cli license is downloaded using the latest version from GitHub
 -   [winget-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
+-   If Server 2019, installs Visual C++ Redistributable
 -   Runs command registration if the `winget` command is not detected at the end of installation
 
 ## Setup
@@ -210,3 +214,8 @@ winget-install
 ## Contributing
 
 If you'd like to help develop this project: fork the repo, edit the code, then submit a pull request. 😊
+
+### To do list
+- [x] Use aka.ms shortened URLs and refactor script.
+- [x] Add support for Server 2019 (PR #43).
+- [ ] Improve error/exit handling by moving logic into its own functions. Remove the `exit` command to avoid script exit. This way we let the script exit naturally and may not even need the `Wait` param.

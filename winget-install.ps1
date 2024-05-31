@@ -1,10 +1,10 @@
 <#PSScriptInfo
 
-.VERSION 4.0.6
+.VERSION 4.1.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
-.AUTHOR asheroto, 1ckov, MisterZeus, ChrisTitusTech, uffemcev
+.AUTHOR asheroto, 1ckov, MisterZeus, ChrisTitusTech, uffemcev, MatthiasGuelck
 
 .COMPANYNAME asheroto
 
@@ -47,7 +47,7 @@
 [Version 4.0.3] - Updated UI.Xaml package as per winget-cli issue #4208.
 [Version 4.0.4] - Fixed detection for Windows multi-session.
 [Version 4.0.5] - Improved error handling when registering winget.
-[Version 4.0.6] - Support for Windows Server < 2022 added
+[Version 4.1.0] - Support for Windows Server 2019 added by installing Visual C++ Redistributable.
 
 #>
 
@@ -77,7 +77,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.0.6
+	Version      : 4.1.0
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -94,7 +94,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.0.6'
+$CurrentVersion = '4.1.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -644,6 +644,53 @@ Function New-TemporaryFile2 {
     return $tempFile
 }
 
+function Add-ToEnvironmentPath {
+    param (
+        [string]$PathToAdd
+    )
+    <#
+    .SYNOPSIS
+    Adds the specified path to the environment PATH variable.
+
+    .DESCRIPTION
+    This function adds a given path to the system-wide and current session PATH environment variable if it is not already present.
+
+    .PARAMETER PathToAdd
+    The directory path to add to the environment PATH variable.
+
+    .EXAMPLE
+    Add-ToEnvironmentPath -PathToAdd "C:\Program Files\MyApp"
+    #>
+
+    # Get the full path to ensure consistency
+    $fullPathToAdd = [System.IO.Path]::GetFullPath($PathToAdd)
+
+    # Get the current system PATH
+    $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+
+    # Check if the path is already in the system PATH variable
+    if (-not ($systemEnvPath -split ';').Contains($fullPathToAdd)) {
+        # Add to system PATH
+        $systemEnvPath += ";$fullPathToAdd"
+        [System.Environment]::SetEnvironmentVariable('PATH', $systemEnvPath, [System.EnvironmentVariableTarget]::Machine)
+        Write-Output "Adding winget folder to the system PATH."
+        Write-Debug "Adding $fullPathToAdd to the system PATH."
+    } else {
+        Write-Output "winget folder already in the system PATH."
+        Write-Debug "$fullPathToAdd is already in the system PATH."
+    }
+
+    # Update the current session PATH
+    if (-not ($env:PATH -split ';').Contains($fullPathToAdd)) {
+        $env:PATH += ";$fullPathToAdd"
+        Write-Output "Adding winget folder to the current session PATH."
+        Write-Debug "Adding $fullPathToAdd to the current session PATH."
+    } else {
+        Write-Output "winget folder is already in the current session PATH."
+        Write-Debug "$fullPathToAdd is already in the current session PATH."
+    }
+}
+
 # ============================================================================ #
 # Initial checks
 # ============================================================================ #
@@ -754,27 +801,18 @@ try {
     Write-Section "Prerequisites"
 
     try {
-        if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
-            # Download Visual C++ Redistributable
-            $VCppRedistributable_Path = New-TemporaryFile2
-            $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
-            Write-Output "Downloading Visual C++ Redistributable..."
-            Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n"
-            Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
-        }
-
         # Download VCLibs
-        $VCLibs_Path = New-TemporaryFile2
         $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
+        $VCLibs_Path = New-TemporaryFile2
         Write-Output "Downloading VCLibs..."
-        Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
+        Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path"
         Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
 
         # Download UI.Xaml
-        $UIXaml_Path = New-TemporaryFile2
         $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.${arch}.appx"
+        $UIXaml_Path = New-TemporaryFile2
         Write-Output "Downloading UI.Xaml..."
-        Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path`n"
+        Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path"
         Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
     } catch {
         $errorHandled = Handle-Error $_
@@ -810,29 +848,6 @@ try {
         Write-Output "Installing winget and its dependencies..."
         Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
 
-        # If it's a server with version below 2022 we need to install Visual C++ Redistributable, adjust the access rights and modify the path
-        if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2022) {
-            # Install Visual C++ Redistributable
-            $VCppRedistributableExe_Path = $VCppRedistributable_Path + ".exe"
-            Rename-Item -Path $VCppRedistributable_Path -NewName $VCppRedistributableExe_Path
-            Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
-
-            # Remove
-            Remove-Item $VCppRedistributableExe_Path
-
-            # Fix Permissions
-            $WinGetFolderPath = "$(Resolve-Path -Path ([IO.Path]::Combine($env:ProgramFiles, 'WindowsApps', 'Microsoft.DesktopAppInstaller_*_' + ${arch} + '__8wekyb3d8bbwe')))"
-            $acl = Get-Acl $WinGetFolderPath
-            $acl.SetAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")))
-            Set-Acl $WinGetFolderPath $acl
-
-            # Add Environment Path
-            $ENV:PATH += ";$WinGetFolderPath"
-            $SystemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
-            $SystemEnvPath += ";$WinGetFolderPath;"
-            setx /M PATH "$SystemEnvPath"
-        }
-
         # Remove
         Remove-Item $VCLibs_Path
         Remove-Item $UIXaml_Path
@@ -844,6 +859,54 @@ try {
             throw $errorHandled
         }
         $errorHandled = $null
+    }
+
+    # ============================================================================ #
+    #  Visual C++ Redistributable (Server 2019 only)
+    # ============================================================================ #
+
+    # Download & install Visual C++ Redistributable if it's Server 2019
+    if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -eq 2019) {
+        Write-Section "Visual C++ Redistributable (Server 2019 only)"
+
+        # Define the URL and temporary file path for the download
+        $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
+        $VCppRedistributable_Path = New-TemporaryFile2
+        Write-Output "Downloading Visual C++ Redistributable..."
+        Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path"
+        Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
+
+        # Rename file
+        $VCppRedistributableExe_Path = $VCppRedistributable_Path + ".exe"
+        Rename-Item -Path $VCppRedistributable_Path -NewName $VCppRedistributableExe_Path
+
+        # Install Visual C++ Redistributable
+        Write-Output "Installing Visual C++ Redistributable..."
+        Write-Debug "Installing Visual C++ Redistributable from $VCppRedistributableExe_Path"
+        Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
+        # Remove the downloaded file
+        Write-Output "Removing temporary file..."
+        Remove-Item $VCppRedistributableExe_Path
+
+        # Find the last version of WinGet folder path
+        $WinGetFolderPath = Get-ChildItem -Path ([IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1
+        Write-Debug "WinGetFolderPath: $WinGetFolderPath"
+
+        if ($null -ne $WinGetFolderPath) {
+            $WinGetFolderPath = $WinGetFolderPath.FullName
+            # Fix Permissions
+            Write-Output "Fixing permissions for $WinGetFolderPath..."
+            $acl = Get-Acl $WinGetFolderPath
+            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+            $acl.SetAccessRule($accessRule)
+            Set-Acl -Path $WinGetFolderPath -AclObject $acl
+
+            # Add Environment Path
+            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
+        } else {
+            Write-Output "WinGet folder path not found."
+        }
     }
 
     # ============================================================================ #
