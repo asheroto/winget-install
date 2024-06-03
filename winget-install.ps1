@@ -716,7 +716,7 @@ function Test-VCRedistInstalled {
     # Check that uninstall information exists in the registry
     $registryPath = [string]::Format(
         'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\{0}\Microsoft\VisualStudio\14.0\VC\Runtimes\X{1}',
-        $(if ($64BitOS -and $64BitProcess) { 'WOW6432Node\' } else { '' }),
+        $(if ($64BitOS -and $64BitProcess) { 'WOW6432Node' } else { '' }),
         $(if ($64BitOS) { '64' } else { '86' })
     )
 
