@@ -733,10 +733,8 @@ function Test-VCRedistInstalled {
 
     $dllExists = [System.IO.File]::Exists($dllPath)
 
-    if ($Verbose) {
-        Write-Output "DLL Path: $dllPath"
-        Write-Output "DLL Exists: $dllExists"
-    }
+    Write-Debug "DLL Path: $dllPath"
+    Write-Debug "DLL Exists: $dllExists"
 
     # Determine if VCRedist is installed
     return $registryExists -and $dllExists
