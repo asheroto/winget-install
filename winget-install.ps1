@@ -740,6 +740,43 @@ function Test-VCRedistInstalled {
     return $registryExists -and $dllExists
 }
 
+function TryRemove {
+    <#
+    .SYNOPSIS
+    Tries to remove a specified file if it exists.
+
+    .DESCRIPTION
+    This function checks if the specified file exists and attempts to remove it. 
+    It will not produce an error if the file does not exist or if the removal fails.
+
+    .PARAMETER FilePath
+    The path to the file that should be removed.
+
+    .EXAMPLE
+    TryRemove -FilePath "C:\path\to\file.txt"
+    #>
+
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    try {
+        if (Test-Path -Path $FilePath) {
+            Remove-Item -Path $FilePath -ErrorAction SilentlyContinue
+            if ($?) {
+                Write-Debug "File '$FilePath' was successfully removed."
+            } else {
+                Write-Debug "Failed to remove the file '$FilePath'."
+            }
+        } else {
+            Write-Debug "File '$FilePath' does not exist."
+        }
+    } catch {
+        Write-Debug "An error occurred while trying to remove the file '$FilePath'."
+    }
+}
+
 # ============================================================================ #
 # Initial checks
 # ============================================================================ #
@@ -897,11 +934,12 @@ try {
         Write-Output "Installing winget and its dependencies..."
         Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
 
-        # Remove
-        Remove-Item $VCLibs_Path
-        Remove-Item $UIXaml_Path
-        Remove-Item $winget_path
-        Remove-Item $winget_license_path
+        # Remove temporary files
+        Write-Debug "Removing temporary files..."
+        TryRemove $VCLibs_Path
+        TryRemove $UIXaml_Path
+        TryRemove $winget_path
+        TryRemove $winget_license_path
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
@@ -919,10 +957,11 @@ try {
         # Visual C++ Redistributable
         # ============================================================================ #
 
+        Write-Section "Visual C++ Redistributable (Server 2019 only)"
+
         # Test if Visual C++ Redistributable is not installed
         if (!(Test-VCRedistInstalled)) {
             Write-Debug "Visual C++ Redistributable is not installed.`n`n"
-            Write-Section "Visual C++ Redistributable (Server 2019 only)"
 
             # Define the URL and temporary file path for the download
             $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
@@ -940,11 +979,10 @@ try {
             Write-Debug "Installing Visual C++ Redistributable from $VCppRedistributableExe_Path`n`n"
             Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
 
-            # Remove the downloaded file
-            Write-Output "Removing temporary file..."
-            Remove-Item $VCppRedistributableExe_Path
+            Write-Debug "Removing temporary file..."
+            TryRemove $VCppRedistributableExe_Path
         } else {
-            Write-Debug "Visual C++ Redistributable is already installed."
+            Write-Output "Visual C++ Redistributable is already installed."
         }
 
         # ============================================================================ #
