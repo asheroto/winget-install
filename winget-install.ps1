@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.1.0
+.VERSION 4.1.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -48,6 +48,7 @@
 [Version 4.0.4] - Fixed detection for Windows multi-session.
 [Version 4.0.5] - Improved error handling when registering winget.
 [Version 4.1.0] - Support for Windows Server 2019 added by installing Visual C++ Redistributable.
+[Version 4.1.1] - Minor revisions to comments & debug output.
 
 #>
 
@@ -77,7 +78,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.1.0
+	Version      : 4.1.1
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -94,7 +95,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.1.0'
+$CurrentVersion = '4.1.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -862,18 +863,20 @@ try {
     }
 
     # ============================================================================ #
-    #  Visual C++ Redistributable (Server 2019 only)
+    #  Server 2019 only
     # ============================================================================ #
 
-    # Download & install Visual C++ Redistributable if it's Server 2019
     if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -eq 2019) {
+        # ============================================================================ #
+        # Visual C++ Redistributable
+        # ============================================================================ #
         Write-Section "Visual C++ Redistributable (Server 2019 only)"
 
         # Define the URL and temporary file path for the download
         $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
         $VCppRedistributable_Path = New-TemporaryFile2
         Write-Output "Downloading Visual C++ Redistributable..."
-        Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path"
+        Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n`n"
         Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
 
         # Rename file
@@ -882,16 +885,20 @@ try {
 
         # Install Visual C++ Redistributable
         Write-Output "Installing Visual C++ Redistributable..."
-        Write-Debug "Installing Visual C++ Redistributable from $VCppRedistributableExe_Path"
+        Write-Debug "Installing Visual C++ Redistributable from $VCppRedistributableExe_Path`n`n"
         Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
 
         # Remove the downloaded file
         Write-Output "Removing temporary file..."
         Remove-Item $VCppRedistributableExe_Path
 
+        # ============================================================================ #
+        # Adjust access rights & PATH environment variable
+        # ============================================================================ #
+
         # Find the last version of WinGet folder path
         $WinGetFolderPath = Get-ChildItem -Path ([IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1
-        Write-Debug "WinGetFolderPath: $WinGetFolderPath"
+        Write-Debug "WinGetFolderPath: $WinGetFolderPath`n`n"
 
         if ($null -ne $WinGetFolderPath) {
             $WinGetFolderPath = $WinGetFolderPath.FullName
