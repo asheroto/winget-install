@@ -704,10 +704,6 @@ function Test-VCRedistInstalled {
     Test-VCRedistInstalled
     #>
 
-    param (
-        [switch]$Verbose
-    )
-
     # Assets
     $64BitOS = [System.Environment]::Is64BitOperatingSystem
     $64BitProcess = [System.Environment]::Is64BitProcess
@@ -726,10 +722,8 @@ function Test-VCRedistInstalled {
 
     $registryExists = Test-Path -Path $registryPath
 
-    if ($Verbose) {
-        Write-Output "Registry Path: $registryPath"
-        Write-Output "Registry Exists: $registryExists"
-    }
+    Write-Debug "Registry Path: $registryPath"
+    Write-Debug "Registry Exists: $registryExists"
 
     # Check that one required DLL exists on the file system
     $dllPath = [string]::Format(
