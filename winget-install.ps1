@@ -675,10 +675,10 @@ function Add-ToEnvironmentPath {
         $systemEnvPath += ";$fullPathToAdd"
         [System.Environment]::SetEnvironmentVariable('PATH', $systemEnvPath, [System.EnvironmentVariableTarget]::Machine)
         Write-Output "Adding winget folder to the system PATH."
-        Write-Debug "Adding $fullPathToAdd to the system PATH."
+        Write-Debug "Adding $fullPathToAdd to the system PATH.`n`n"
     } else {
         Write-Output "winget folder already in the system PATH."
-        Write-Debug "$fullPathToAdd is already in the system PATH."
+        Write-Debug "$fullPathToAdd is already in the system PATH.`n`n"
     }
 
     # Update the current session PATH
@@ -690,6 +690,62 @@ function Add-ToEnvironmentPath {
         Write-Output "winget folder is already in the current session PATH."
         Write-Debug "$fullPathToAdd is already in the current session PATH."
     }
+}
+
+function Test-VCRedistInstalled {
+    <#
+    .SYNOPSIS
+    Checks if Visual C++ Redistributable is installed.
+
+    .DESCRIPTION
+    This function checks the registry and the file system to determine if Visual C++ Redistributable is installed.
+
+    .EXAMPLE
+    Test-VCRedistInstalled
+    #>
+
+    param (
+        [switch]$Verbose
+    )
+
+    # Assets
+    $64BitOS = [System.Environment]::Is64BitOperatingSystem
+    $64BitProcess = [System.Environment]::Is64BitProcess
+
+    # Require running system native process
+    if ($64BitOS -and -not $64BitProcess) {
+        Throw 'Please run PowerShell in the system native architecture (x64 PowerShell if x64 Windows).'
+    }
+
+    # Check that uninstall information exists in the registry
+    $registryPath = [string]::Format(
+        'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\{0}\Microsoft\VisualStudio\14.0\VC\Runtimes\X{1}',
+        $(if ($64BitOS -and $64BitProcess) { 'WOW6432Node\' } else { '' }),
+        $(if ($64BitOS) { '64' } else { '86' })
+    )
+
+    $registryExists = Test-Path -Path $registryPath
+
+    if ($Verbose) {
+        Write-Output "Registry Path: $registryPath"
+        Write-Output "Registry Exists: $registryExists"
+    }
+
+    # Check that one required DLL exists on the file system
+    $dllPath = [string]::Format(
+        '{0}\system32\concrt140.dll',
+        $env:windir
+    )
+
+    $dllExists = [System.IO.File]::Exists($dllPath)
+
+    if ($Verbose) {
+        Write-Output "DLL Path: $dllPath"
+        Write-Output "DLL Exists: $dllExists"
+    }
+
+    # Determine if VCRedist is installed
+    return $registryExists -and $dllExists
 }
 
 # ============================================================================ #
@@ -806,7 +862,7 @@ try {
         $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
         $VCLibs_Path = New-TemporaryFile2
         Write-Output "Downloading VCLibs..."
-        Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path"
+        Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
         Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
 
         # Download UI.Xaml
@@ -870,31 +926,40 @@ try {
         # ============================================================================ #
         # Visual C++ Redistributable
         # ============================================================================ #
-        Write-Section "Visual C++ Redistributable (Server 2019 only)"
 
-        # Define the URL and temporary file path for the download
-        $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
-        $VCppRedistributable_Path = New-TemporaryFile2
-        Write-Output "Downloading Visual C++ Redistributable..."
-        Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n`n"
-        Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
+        # Test if Visual C++ Redistributable is not installed
+        if (!(Test-VCRedistInstalled)) {
+            Write-Debug "Visual C++ Redistributable is not installed.`n`n"
+            Write-Section "Visual C++ Redistributable (Server 2019 only)"
 
-        # Rename file
-        $VCppRedistributableExe_Path = $VCppRedistributable_Path + ".exe"
-        Rename-Item -Path $VCppRedistributable_Path -NewName $VCppRedistributableExe_Path
+            # Define the URL and temporary file path for the download
+            $VCppRedistributable_Url = "https://aka.ms/vs/17/release/vc_redist.${arch}.exe"
+            $VCppRedistributable_Path = New-TemporaryFile2
+            Write-Output "Downloading Visual C++ Redistributable..."
+            Write-Debug "Downloading Visual C++ Redistributable from $VCppRedistributable_Url to $VCppRedistributable_Path`n`n"
+            Invoke-WebRequest -Uri $VCppRedistributable_Url -OutFile $VCppRedistributable_Path
 
-        # Install Visual C++ Redistributable
-        Write-Output "Installing Visual C++ Redistributable..."
-        Write-Debug "Installing Visual C++ Redistributable from $VCppRedistributableExe_Path`n`n"
-        Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
+            # Rename file
+            $VCppRedistributableExe_Path = $VCppRedistributable_Path + ".exe"
+            Rename-Item -Path $VCppRedistributable_Path -NewName $VCppRedistributableExe_Path
 
-        # Remove the downloaded file
-        Write-Output "Removing temporary file..."
-        Remove-Item $VCppRedistributableExe_Path
+            # Install Visual C++ Redistributable
+            Write-Output "Installing Visual C++ Redistributable..."
+            Write-Debug "Installing Visual C++ Redistributable from $VCppRedistributableExe_Path`n`n"
+            Start-Process -FilePath $VCppRedistributableExe_Path -ArgumentList "/install", "/quiet", "/norestart" -Wait
+
+            # Remove the downloaded file
+            Write-Output "Removing temporary file..."
+            Remove-Item $VCppRedistributableExe_Path
+        } else {
+            Write-Debug "Visual C++ Redistributable is already installed."
+        }
 
         # ============================================================================ #
         # Adjust access rights & PATH environment variable
         # ============================================================================ #
+
+        Write-Section "Adjust access rights & PATH environment variable (Server 2019 only)"
 
         # Find the last version of WinGet folder path
         $WinGetFolderPath = Get-ChildItem -Path ([IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1
