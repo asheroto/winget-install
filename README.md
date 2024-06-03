@@ -59,7 +59,7 @@
 -   Supports x86/x64 and arm/arm64 architectures
 -   Allows bypassing of existing `winget` installation verification through `-Force` parameter or `$Force` session variable
 -   Supports irm/iex one-line command using short URL
--   Supports automatically relaunching in conhost and ending active processes associated with winget that could interfere with the installation
+-   Supports automatically relaunching in conhost and ending active processes associated with `winget` that could interfere with the installation
 -   Code is hosted on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install)
 
 ## Script Functionality
@@ -70,7 +70,9 @@
 -   Uses the UI.Xaml and VCLibs as [recommended by Microsoft](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox)
 -   The winget-cli license is downloaded using the latest version from GitHub
 -   [winget-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
--   If Server 2019, installs Visual C++ Redistributable
+-   Server 2019 only
+    -   Installs Visual C++ Redistributable if not already installed
+    -   Adjust access rights & PATH environment variable
 -   Runs command registration if the `winget` command is not detected at the end of installation
 
 ## Setup
