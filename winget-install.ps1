@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.1.1
+.VERSION 4.1.2
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -49,6 +49,7 @@
 [Version 4.0.5] - Improved error handling when registering winget.
 [Version 4.1.0] - Support for Windows Server 2019 added by installing Visual C++ Redistributable.
 [Version 4.1.1] - Minor revisions to comments & debug output.
+[Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 
 #>
 
@@ -78,7 +79,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.1.1
+	Version      : 4.1.2
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -95,7 +96,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.1.1'
+$CurrentVersion = '4.1.2'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -695,10 +696,11 @@ function Add-ToEnvironmentPath {
 function Test-VCRedistInstalled {
     <#
     .SYNOPSIS
-    Checks if Visual C++ Redistributable is installed.
+    Checks if Visual C++ Redistributable is installed and verifies the major version is 14.
 
     .DESCRIPTION
-    This function checks the registry and the file system to determine if Visual C++ Redistributable is installed.
+    This function checks the registry and the file system to determine if Visual C++ Redistributable is installed
+    and if the major version is 14.
 
     .EXAMPLE
     Test-VCRedistInstalled
@@ -725,6 +727,15 @@ function Test-VCRedistInstalled {
     Write-Debug "Registry Path: $registryPath"
     Write-Debug "Registry Exists: $registryExists"
 
+    # Check the major version
+    $majorVersion = if ($registryExists) {
+        (Get-ItemProperty -Path $registryPath -Name 'Major').Major
+    } else {
+        0
+    }
+
+    Write-Debug "Major Version: $majorVersion"
+
     # Check that one required DLL exists on the file system
     $dllPath = [string]::Format(
         '{0}\system32\concrt140.dll',
@@ -736,8 +747,8 @@ function Test-VCRedistInstalled {
     Write-Debug "DLL Path: $dllPath"
     Write-Debug "DLL Exists: $dllExists"
 
-    # Determine if VCRedist is installed
-    return $registryExists -and $dllExists
+    # Determine if VCRedist is installed and major version is 14
+    return $registryExists -and $majorVersion -eq 14 -and $dllExists
 }
 
 function TryRemove {

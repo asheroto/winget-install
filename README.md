@@ -71,7 +71,7 @@
 -   The winget-cli license is downloaded using the latest version from GitHub
 -   [winget-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
 -   Server 2019 only
-    -   Installs Visual C++ Redistributable if not already installed
+    -   Installs Visual C++ Redistributable if version 14 or higher is not already installed
     -   Adjust access rights & PATH environment variable
 -   Runs command registration if the `winget` command is not detected at the end of installation
 
