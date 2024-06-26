@@ -51,7 +51,7 @@
 [Version 4.1.1] - Minor revisions to comments & debug output.
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 [Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
-[Version 4.1.4] - Added environment path detection and addition if needed.
+[Version 4.1.4] - Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion.
 
 #>
 
@@ -72,6 +72,8 @@ This script is designed to be straightforward and easy to use, removing the hass
     Relaunches the script in conhost.exe and automatically ends active processes associated with winget that could interfere with the installation.
 .PARAMETER Wait
     Forces the script to wait several seconds before exiting.
+.PARAMETER NoExit
+    Forces the script to wait indefinitely before exiting.
 .PARAMETER UpdateSelf
     Updates the script to the latest version on PSGallery.
 .PARAMETER CheckForUpdate
@@ -92,6 +94,7 @@ param (
     [switch]$ForceClose,
     [switch]$CheckForUpdate,
     [switch]$Wait,
+    [switch]$NoExit,
     [switch]$UpdateSelf,
     [switch]$Version,
     [switch]$Help
@@ -570,6 +573,12 @@ function ExitWithDelay {
         Start-Sleep -Seconds $Seconds
     }
 
+    # If NoExit is specified, do not exit the script
+    if ($NoExit) {
+        Write-Output "Script completed. Pausing indefinitely. Press any key to exit..."
+        Read-Host
+    }
+
     # Exit the script with error code
     # Some systems may accidentally close the window, but that's a PowerShell bug
     # https://stackoverflow.com/questions/67593504/why-wont-the-exit-function-work-in-my-powershell-code
@@ -861,6 +870,7 @@ if ($UpdateSelf) { UpdateSelf }
 # Heading
 Write-Output "To check for updates, run winget-install -CheckForUpdate"
 Write-Output "To delay script exit, run winget-install -Wait"
+Write-Output "To force script pausing after execution, run winget-install -NoExit"
 
 # Check if the current user is an administrator
 if (-not (Test-AdminPrivileges)) {
