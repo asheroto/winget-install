@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.1.3
+.VERSION 4.2.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -51,7 +51,7 @@
 [Version 4.1.1] - Minor revisions to comments & debug output.
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 [Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
-[Version 4.1.4] - Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion.
+[Version 4.2.0] - Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion.
 
 #>
 
@@ -83,7 +83,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.1.4
+	Version      : 4.2.0
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -101,7 +101,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.1.4'
+$CurrentVersion = '4.2.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -659,64 +659,93 @@ Function New-TemporaryFile2 {
 
 function Path-ExistsInEnvironment {
     param (
-        [string]$PathToCheck
+        [string]$PathToCheck,
+        [string]$Scope = 'Both' # Valid values: 'User', 'System', 'Both'
     )
     <#
     .SYNOPSIS
-    Checks if the specified path exists in the system-wide or current session PATH environment variable.
+    Checks if the specified path exists in the specified PATH environment variable.
 
     .DESCRIPTION
-    This function checks if a given path is present in either the system-wide or current session PATH environment variable.
+    This function checks if a given path is present in the user, system-wide, or both PATH environment variables.
 
     .PARAMETER PathToCheck
     The directory path to check in the environment PATH variable.
 
+    .PARAMETER Scope
+    The scope to check in the environment PATH variable. Valid values are 'User', 'System', or 'Both'. Default is 'Both'.
+
     .EXAMPLE
-    Path-ExistsInEnvironment -PathToCheck "C:\Program Files\MyApp"
+    Path-ExistsInEnvironment -PathToCheck "C:\Program Files\MyApp" -Scope 'User'
     #>
 
-    $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
-    $userEnvPath = $env:PATH
+    $pathExists = $false
 
-    return ($systemEnvPath -split ';').Contains($PathToCheck) -or ($userEnvPath -split ';').Contains($PathToCheck)
+    if ($Scope -eq 'User' -or $Scope -eq 'Both') {
+        $userEnvPath = $env:PATH
+        if (($userEnvPath -split ';').Contains($PathToCheck)) {
+            $pathExists = $true
+        }
+    }
+
+    if ($Scope -eq 'System' -or $Scope -eq 'Both') {
+        $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+        if (($systemEnvPath -split ';').Contains($PathToCheck)) {
+            $pathExists = $true
+        }
+    }
+
+    return $pathExists
 }
 
 function Add-ToEnvironmentPath {
     param (
-        [string]$PathToAdd
+        [string]$PathToAdd,
+        [ValidateSet('User', 'System')]
+        [string]$Scope
     )
     <#
     .SYNOPSIS
     Adds the specified path to the environment PATH variable.
 
     .DESCRIPTION
-    This function adds a given path to the system-wide and current session PATH environment variable if it is not already present.
+    This function adds a given path to the specified scope (user or system) and the current process environment PATH variable if it is not already present.
 
     .PARAMETER PathToAdd
     The directory path to add to the environment PATH variable.
 
+    .PARAMETER Scope
+    Specifies whether to add the path to the user or system environment PATH variable.
+
     .EXAMPLE
-    Add-ToEnvironmentPath -PathToAdd "C:\Program Files\MyApp"
+    Add-ToEnvironmentPath -PathToAdd "C:\Program Files\MyApp" -Scope 'System'
     #>
 
-    # Get the full path to ensure consistency
-    $fullPathToAdd = [System.IO.Path]::GetFullPath($PathToAdd)
-
     # Check if the path is already in the environment PATH variable
-    if (-not (Path-ExistsInEnvironment -PathToCheck $fullPathToAdd)) {
-        # Get the current system PATH
-        $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+    if (-not (Path-ExistsInEnvironment -PathToCheck $PathToAdd -Scope $Scope)) {
+        if ($Scope -eq 'System') {
+            # Get the current system PATH
+            $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+            # Add to system PATH
+            $systemEnvPath += ";$PathToAdd"
+            [System.Environment]::SetEnvironmentVariable('PATH', $systemEnvPath, [System.EnvironmentVariableTarget]::Machine)
+            Write-Debug "Adding $PathToAdd to the system PATH."
+        } elseif ($Scope -eq 'User') {
+            # Get the current user PATH
+            $userEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::User)
+            # Add to user PATH
+            $userEnvPath += ";$PathToAdd"
+            [System.Environment]::SetEnvironmentVariable('PATH', $userEnvPath, [System.EnvironmentVariableTarget]::User)
+            Write-Debug "Adding $PathToAdd to the user PATH."
+        }
 
-        # Add to system PATH
-        $systemEnvPath += ";$fullPathToAdd"
-        [System.Environment]::SetEnvironmentVariable('PATH', $systemEnvPath, [System.EnvironmentVariableTarget]::Machine)
-        Write-Output "Adding $fullPathToAdd to the system PATH."
-
-        # Update the current session PATH
-        $env:PATH += ";$fullPathToAdd"
-        Write-Output "Adding $fullPathToAdd to the current session PATH."
+        # Update the current process environment PATH
+        if (-not ($env:PATH -split ';').Contains($PathToAdd)) {
+            $env:PATH += ";$PathToAdd"
+            Write-Debug "Adding $PathToAdd to the current process environment PATH."
+        }
     } else {
-        Write-Output "$fullPathToAdd is already in the PATH."
+        Write-Debug "$PathToAdd is already in the PATH."
     }
 }
 
@@ -1022,31 +1051,26 @@ try {
     }
 
     # ============================================================================ #
-    # Adjust access rights & PATH environment variable
+    # Adjust PATH environment variable
     # ============================================================================ #
 
-    Write-Output "Adjusting access rights & PATH environment variable (only if needed)..."
+    # If NOT Server 2019, check PATH environment variable this way
+    if (!($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -eq 2019)) {
+        Write-Output "`nChecking PATH environment variable..."
 
-    # Find the last version of WinGet folder path
-    $WinGetFolderPath = Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1
-    Write-Debug "WinGetFolderPath: $WinGetFolderPath"
+        # Find WindowsApps path in Local AppData
+        $LocalWindowsAppsPath = [System.IO.Path]::Combine($env:USERPROFILE, "AppData", "Local", "Microsoft", "WindowsApps")
+        $LocalWinGetPath = [System.IO.Path]::Combine($LocalWindowsAppsPath, "winget.exe")
+        Write-Debug "LocalWindowsAppsPath: $LocalWindowsAppsPath"
+        Write-Debug "LocalWinGetPath: $LocalWinGetPath"
 
-    $LocalWinGetPath = [System.IO.Path]::Combine($env:USERPROFILE, "AppData", "Local", "Microsoft", "WindowsApps")
-    Write-Debug "LocalWinGetPath: $LocalWinGetPath`n`n"
-
-    if ($null -ne $WinGetFolderPath -and (Test-Path ($WinGetFolderPath.FullName))) {
-        $WinGetFolderPath = $WinGetFolderPath.FullName
-
-        # Fix permissions
-        Set-PathPermissions -Path $WinGetFolderPath
-
-        # Add environment path if not already present
-        Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
-    } elseif (Test-Path ($LocalWinGetPath)) {
-        # Add environment path if not already present
-        Add-ToEnvironmentPath -PathToAdd "%USERPROFILE%\AppData\Local\Microsoft\WindowsApps"
-    } else {
-        Write-Debug "Path not found in Program Files or %USERPROFILE%\AppData\Local\Microsoft\WindowsApps."
+        # If winget exists in Local AppData, add the WindowsApps path to the environment PATH if not already present
+        if (Test-Path ($LocalWinGetPath)) {
+            # Add environment path if not already present
+            Add-ToEnvironmentPath -PathToAdd $LocalWindowsAppsPath -Scope 'User'
+        } else {
+            Write-Warning "Could not locate winget in folder %USERPROFILE%\AppData\Local\Microsoft\WindowsApps."
+        }
     }
 
     # ============================================================================ #
@@ -1085,6 +1109,25 @@ try {
         } else {
             Write-Output "Visual C++ Redistributable is already installed."
         }
+
+        # ============================================================================ #
+        # Fix environment PATH and permissions
+        # ============================================================================ #
+
+        # Fix permissions for winget folder (Server 2019 only)
+        Write-Output "Fixing permissions for winget folder (Server 2019 only)..."
+
+        # Find winget folder path in Program Files
+        $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
+        Write-Debug "WinGetFolderPath: $WinGetFolderPath`n`n"
+
+        # Add environment path if not already present
+        Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath -Scope 'System'
+
+        # Fix permissions
+        Write-Output "Fixing permissions for winget folder..."
+        Write-Debug "Fixing permissions for $WinGetFolderPath..."
+        Set-PathPermissions -Path $WinGetFolderPath
     }
 
     # ============================================================================ #
