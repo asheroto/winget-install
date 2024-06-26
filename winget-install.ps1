@@ -1119,7 +1119,7 @@ try {
 
         # Find winget folder path in Program Files
         $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
-        Write-Debug "WinGetFolderPath: $WinGetFolderPath`n`n"
+        Write-Debug "WinGetFolderPath: $WinGetFolderPath"
 
         # Add environment path if not already present
         Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath -Scope 'System'
