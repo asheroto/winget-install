@@ -165,16 +165,17 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 
 **No parameters are required** to run the script, but there are some optional parameters to use if needed.
 
-| Parameter         | Description                                                                                                                                                                                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `-Debug`          | Enables debug mode, which shows additional information for debugging.                                                                                                                                                                                  |
-| `-Force`          | Ensures installation of winget and its dependencies, even if already present.                                                                                                                                                                          |
-| `-ForceClose`     | Windows Terminal sometimes has trouble installing winget; run the script with the -ForceClose parameter to relaunch the script in conhost.exe and automatically end active processes associated with winget that could interfere with the installation |
-| `-CheckForUpdate` | Checks if there is an update available for the script.                                                                                                                                                                                                 |
-| `-Wait`           | By default, the script will exit immediately after completion. If you need some time to observe the script output, you can use this parameter to force the script to pause for several seconds before exiting.                                         |
-| `-UpdateSelf`     | Updates the script to the latest version.                                                                                                                                                                                                              |
-| `-Version`        | Displays the version of the script.                                                                                                                                                                                                                    |
-| `-Help`           | Displays the full help information for the script.                                                                                                                                                                                                     |
+| Parameter         | Description                                                                                                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-Debug`          | Enables debug mode, showing additional information for troubleshooting.                                                                                                                                                                                       |
+| `-Force`          | Ensures the installation of winget and its dependencies, even if they are already present.                                                                                                                                                                    |
+| `-ForceClose`     | If Windows Terminal has trouble installing winget, use this parameter to relaunch the script in conhost.exe and automatically end any active processes associated with winget that could interfere with the installation.                                     |
+| `-CheckForUpdate` | Checks if there is an update available for the script.                                                                                                                                                                                                        |
+| `-Wait`           | By default, the script exits immediately after completion. Use this parameter to pause the script for several seconds before exiting to observe the output.                                                                                                   |
+| `-NoExit`         | By default, the script exits immediately after completion. Although this is not supposed to close the PowerShell window, sometimes it still occurs. Use this parameter to pause the script indefinitely after execution; pressing Enter will exit the script. |
+| `-UpdateSelf`     | Updates the script to the latest version.                                                                                                                                                                                                                     |
+| `-Version`        | Displays the version of the script.                                                                                                                                                                                                                           |
+| `-Help`           | Displays the full help information for the script.                                                                                                                                                                                                            |  |
 
 ### Example Parameters Usage
 
@@ -203,7 +204,7 @@ winget-install
 
 -   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2.
 -   If you run into an issue, please ensure your system is compatible & fully updated.
--   Sometimes PowerShell accidentally closes the window before you can read the output, so you can use the `-Wait` parameter to pause the script for a few seconds before exiting if this is happening on your system.
+-   Sometimes PowerShell closes the window before you can read the output. To prevent this, you can use the `-Wait` parameter to pause the script for a few seconds or the `-NoExit` parameter to keep the window open indefinitely. Improving script exit functionality is on our TODO list.
 -   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs.
 -   Try using the `-Debug` parameters to see if it provides any additional information.
 -   If you're getting a `resource in use` error message, run the script again with the `-ForceClose` parameter.
@@ -220,4 +221,4 @@ If you'd like to help develop this project: fork the repo, edit the code, then s
 ### To do list
 - [x] Use aka.ms shortened URLs and refactor script.
 - [x] Add support for Server 2019 (PR #43).
-- [ ] Improve error/exit handling by moving logic into its own functions. Remove the `exit` command to avoid script exit. This way we let the script exit naturally and may not even need the `Wait` param.
+- [ ] Improve error/exit handling by moving logic into its own functions. Remove the `exit` command to avoid script exit. This way we let the script exit naturally and may not even need the `Wait` or `NoExit` param.
