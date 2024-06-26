@@ -51,6 +51,7 @@
 [Version 4.1.1] - Minor revisions to comments & debug output.
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 [Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
+[Version 4.1.4] - Added environment path detection and addition if needed.
 
 #>
 
@@ -80,7 +81,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.1.3
+	Version      : 4.1.4
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -97,7 +98,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.1.3'
+$CurrentVersion = '4.1.4'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -676,22 +677,44 @@ function Add-ToEnvironmentPath {
         # Add to system PATH
         $systemEnvPath += ";$fullPathToAdd"
         [System.Environment]::SetEnvironmentVariable('PATH', $systemEnvPath, [System.EnvironmentVariableTarget]::Machine)
-        Write-Output "Adding winget folder to the system PATH."
-        Write-Debug "Adding $fullPathToAdd to the system PATH.`n`n"
+        Write-Output "Adding $fullPathToAdd to the system PATH."
     } else {
-        Write-Output "winget folder already in the system PATH."
-        Write-Debug "$fullPathToAdd is already in the system PATH.`n`n"
+        Write-Output "$fullPathToAdd already in the system PATH."
     }
 
     # Update the current session PATH
     if (-not ($env:PATH -split ';').Contains($fullPathToAdd)) {
         $env:PATH += ";$fullPathToAdd"
-        Write-Output "Adding winget folder to the current session PATH."
-        Write-Debug "Adding $fullPathToAdd to the current session PATH."
+        Write-Output "Adding $fullPathToAdd to the current session PATH."
     } else {
-        Write-Output "winget folder is already in the current session PATH."
-        Write-Debug "$fullPathToAdd is already in the current session PATH."
+        Write-Output "$fullPathToAdd is already in the current session PATH."
     }
+}
+
+function Set-PathPermissions {
+    param (
+        [string]$Path
+    )
+    <#
+    .SYNOPSIS
+    Sets full control permissions for the current user on the specified path.
+
+    .DESCRIPTION
+    This function sets full control permissions for the current user on the given directory path.
+
+    .PARAMETER Path
+    The directory path for which to set permissions.
+
+    .EXAMPLE
+    Set-PathPermissions -Path "C:\Program Files\MyApp"
+    #>
+
+    # Fix Permissions
+    Write-Output "Fixing permissions for $Path..."
+    $acl = Get-Acl $Path
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+    $acl.SetAccessRule($accessRule)
+    Set-Acl -Path $Path -AclObject $acl
 }
 
 function Test-VCRedistInstalled {
@@ -969,6 +992,40 @@ try {
     }
 
     # ============================================================================ #
+    # Adjust access rights & PATH environment variable
+    # ============================================================================ #
+
+    Write-Output "Adjusting access rights & PATH environment variable (only if needed)..."
+
+    # Find the last version of WinGet folder path
+    $WinGetFolderPath = Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1
+    Write-Debug "WinGetFolderPath: $WinGetFolderPath`n`n"
+
+    if ($null -ne $WinGetFolderPath) {
+        $WinGetFolderPath = $WinGetFolderPath.FullName
+
+        if (Test-Path ($WinGetFolderPath)) {
+            # Fix permissions
+            Set-PathPermissions -Path $WinGetFolderPath
+
+            # Add environment path if not already present
+            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
+        } else {
+            Write-Debug "Path not found in $WinGetFolderPath."
+        }
+    } else {
+        Write-Debug "WinGet folder path not found in Program Files. Checking %LOCALAPPDATA%\Microsoft\WindowsApps."
+
+        $LocalWinGetPath = [System.IO.Path]::Combine($env:LOCALAPPDATA, "Microsoft", "WindowsApps")
+        if (Test-Path ($LocalWinGetPath)) {
+            # Add environment path if not already present
+            Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps"
+        } else {
+            Write-Debug "Path not found: %LOCALAPPDATA%\Microsoft\WindowsApps."
+        }
+    }
+
+    # ============================================================================ #
     #  Server 2019 only
     # ============================================================================ #
 
@@ -1003,31 +1060,6 @@ try {
             TryRemove $VCppRedistributableExe_Path
         } else {
             Write-Output "Visual C++ Redistributable is already installed."
-        }
-
-        # ============================================================================ #
-        # Adjust access rights & PATH environment variable
-        # ============================================================================ #
-
-        Write-Section "Adjust access rights & PATH environment variable (Server 2019 only)"
-
-        # Find the last version of WinGet folder path
-        $WinGetFolderPath = Get-ChildItem -Path ([IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1
-        Write-Debug "WinGetFolderPath: $WinGetFolderPath`n`n"
-
-        if ($null -ne $WinGetFolderPath) {
-            $WinGetFolderPath = $WinGetFolderPath.FullName
-            # Fix Permissions
-            Write-Output "Fixing permissions for $WinGetFolderPath..."
-            $acl = Get-Acl $WinGetFolderPath
-            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
-            $acl.SetAccessRule($accessRule)
-            Set-Acl -Path $WinGetFolderPath -AclObject $acl
-
-            # Add Environment Path
-            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
-        } else {
-            Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
         }
     }
 
