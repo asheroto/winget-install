@@ -50,6 +50,7 @@
 [Version 4.1.0] - Support for Windows Server 2019 added by installing Visual C++ Redistributable.
 [Version 4.1.1] - Minor revisions to comments & debug output.
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
+[Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
 
 #>
 
@@ -734,7 +735,15 @@ function Test-VCRedistInstalled {
         0
     }
 
+    # Check the full version
+    $version = if ($registryExists) {
+        (Get-ItemProperty -Path $registryPath -Name 'Version').Version
+    } else {
+        0
+    }
+
     Write-Debug "Major Version: $majorVersion"
+    Write-Debug "Version: $version"
 
     # Check that one required DLL exists on the file system
     $dllPath = [string]::Format(
