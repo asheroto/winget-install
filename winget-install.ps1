@@ -768,7 +768,7 @@ function Set-PathPermissions {
     #>
 
     # Fix Permissions
-    Write-Output "Fixing permissions for $Path..."
+    Write-Debug "Fixing permissions for $Path..."
     $acl = Get-Acl $Path
     $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
     $acl.SetAccessRule($accessRule)
@@ -1126,7 +1126,6 @@ try {
 
         # Fix permissions
         Write-Output "Fixing permissions for winget folder..."
-        Write-Debug "Fixing permissions for $WinGetFolderPath..."
         Set-PathPermissions -Path $WinGetFolderPath
     }
 
