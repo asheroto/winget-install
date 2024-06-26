@@ -648,6 +648,30 @@ Function New-TemporaryFile2 {
     return $tempFile
 }
 
+function Path-ExistsInEnvironment {
+    param (
+        [string]$PathToCheck
+    )
+    <#
+    .SYNOPSIS
+    Checks if the specified path exists in the system-wide or current session PATH environment variable.
+
+    .DESCRIPTION
+    This function checks if a given path is present in either the system-wide or current session PATH environment variable.
+
+    .PARAMETER PathToCheck
+    The directory path to check in the environment PATH variable.
+
+    .EXAMPLE
+    Path-ExistsInEnvironment -PathToCheck "C:\Program Files\MyApp"
+    #>
+
+    $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+    $userEnvPath = $env:PATH
+
+    return ($systemEnvPath -split ';').Contains($PathToCheck) -or ($userEnvPath -split ';').Contains($PathToCheck)
+}
+
 function Add-ToEnvironmentPath {
     param (
         [string]$PathToAdd
@@ -669,25 +693,21 @@ function Add-ToEnvironmentPath {
     # Get the full path to ensure consistency
     $fullPathToAdd = [System.IO.Path]::GetFullPath($PathToAdd)
 
-    # Get the current system PATH
-    $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
+    # Check if the path is already in the environment PATH variable
+    if (-not (Path-ExistsInEnvironment -PathToCheck $fullPathToAdd)) {
+        # Get the current system PATH
+        $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
 
-    # Check if the path is already in the system PATH variable
-    if (-not ($systemEnvPath -split ';').Contains($fullPathToAdd)) {
         # Add to system PATH
         $systemEnvPath += ";$fullPathToAdd"
         [System.Environment]::SetEnvironmentVariable('PATH', $systemEnvPath, [System.EnvironmentVariableTarget]::Machine)
         Write-Output "Adding $fullPathToAdd to the system PATH."
-    } else {
-        Write-Output "$fullPathToAdd already in the system PATH."
-    }
 
-    # Update the current session PATH
-    if (-not ($env:PATH -split ';').Contains($fullPathToAdd)) {
+        # Update the current session PATH
         $env:PATH += ";$fullPathToAdd"
         Write-Output "Adding $fullPathToAdd to the current session PATH."
     } else {
-        Write-Output "$fullPathToAdd is already in the current session PATH."
+        Write-Output "$fullPathToAdd is already in the PATH."
     }
 }
 
@@ -999,30 +1019,24 @@ try {
 
     # Find the last version of WinGet folder path
     $WinGetFolderPath = Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1
-    Write-Debug "WinGetFolderPath: $WinGetFolderPath`n`n"
+    Write-Debug "WinGetFolderPath: $WinGetFolderPath"
 
-    if ($null -ne $WinGetFolderPath) {
+    $LocalWinGetPath = [System.IO.Path]::Combine($env:USERPROFILE, "AppData", "Local", "Microsoft", "WindowsApps")
+    Write-Debug "LocalWinGetPath: $LocalWinGetPath`n`n"
+
+    if ($null -ne $WinGetFolderPath -and (Test-Path ($WinGetFolderPath.FullName))) {
         $WinGetFolderPath = $WinGetFolderPath.FullName
 
-        if (Test-Path ($WinGetFolderPath)) {
-            # Fix permissions
-            Set-PathPermissions -Path $WinGetFolderPath
+        # Fix permissions
+        Set-PathPermissions -Path $WinGetFolderPath
 
-            # Add environment path if not already present
-            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
-        } else {
-            Write-Debug "Path not found in $WinGetFolderPath."
-        }
+        # Add environment path if not already present
+        Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
+    } elseif (Test-Path ($LocalWinGetPath)) {
+        # Add environment path if not already present
+        Add-ToEnvironmentPath -PathToAdd "%USERPROFILE%\AppData\Local\Microsoft\WindowsApps"
     } else {
-        Write-Debug "WinGet folder path not found in Program Files. Checking %LOCALAPPDATA%\Microsoft\WindowsApps."
-
-        $LocalWinGetPath = [System.IO.Path]::Combine($env:LOCALAPPDATA, "Microsoft", "WindowsApps")
-        if (Test-Path ($LocalWinGetPath)) {
-            # Add environment path if not already present
-            Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps"
-        } else {
-            Write-Debug "Path not found: %LOCALAPPDATA%\Microsoft\WindowsApps."
-        }
+        Write-Debug "Path not found in Program Files or %USERPROFILE%\AppData\Local\Microsoft\WindowsApps."
     }
 
     # ============================================================================ #
