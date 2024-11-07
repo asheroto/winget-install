@@ -581,9 +581,9 @@ function ExitWithDelay {
 
     # Exit the script with error code
     if ($host.Name -eq 'ConsoleHost') {
-        return
+        Break
     } else {
-        exit $ExitCode
+        Exit $ExitCode
     }
 }
 
@@ -753,29 +753,46 @@ function Add-ToEnvironmentPath {
 
 function Set-PathPermissions {
     param (
-        [string]$Path
+        [string]$FolderPath
     )
     <#
     .SYNOPSIS
-    Sets full control permissions for the current user on the specified path.
+    Grants full control permissions for the Administrators group on the specified directory path.
 
     .DESCRIPTION
-    This function sets full control permissions for the current user on the given directory path.
+    This function sets full control permissions for the Administrators group on the specified directory path. 
+    Useful for ensuring that administrators have unrestricted access to a given folder.
 
-    .PARAMETER Path
-    The directory path for which to set permissions.
+    .PARAMETER FolderPath
+    The directory path for which to set full control permissions.
 
     .EXAMPLE
-    Set-PathPermissions -Path "C:\Program Files\MyApp"
+    Set-PathPermissions -FolderPath "C:\Program Files\MyApp"
+
+    Sets full control permissions for the Administrators group on "C:\Program Files\MyApp".
     #>
 
-    Write-Debug "Setting full control permissions for Administrators group on $Path."
+    Write-Debug "Setting full control permissions for the Administrators group on $FolderPath."
+
+    # Define the SID for the Administrators group
     $administratorsGroupSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
     $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
-    $acl = Get-Acl $Path
-    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($administratorsGroup, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+
+    # Retrieve the current ACL for the folder
+    $acl = Get-Acl -Path $FolderPath
+
+    # Define the access rule for full control inheritance
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        $administratorsGroup,
+        "FullControl",
+        "ContainerInherit,ObjectInherit",
+        "None",
+        "Allow"
+    )
+
+    # Apply the access rule to the ACL and set it on the folder
     $acl.SetAccessRule($accessRule)
-    Set-Acl -Path $Path -AclObject $acl
+    Set-Acl -Path $FolderPath -AclObject $acl
 }
 
 function Test-VCRedistInstalled {
@@ -984,14 +1001,14 @@ if ($ForceClose) {
 # Beginning of installation process
 # ============================================================================ #
 
-Write-Output ""
-
 try {
     # ============================================================================ #
     # winget
     # ============================================================================ #
 
-    if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -ne 2019) {
+    if ($osVersion.NumericVersion -ne 2019) {
+
+        Write-Section "winget"
 
         try {
             Write-Output "Installing NuGet package provider..."
@@ -1142,12 +1159,11 @@ try {
         Write-Debug "WinGetFolderPath: $WinGetFolderPath"
 
         if ($null -ne $WinGetFolderPath) {
-            $WinGetFolderPath = $WinGetFolderPath.FullName
             # Fix Permissions by adding Administrators group with FullControl
-            Set-PathPermissions -Path $WinGetFolderPath
+            Set-PathPermissions -FolderPath $WinGetFolderPathFullName
 
             # Add Environment Path
-            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
+            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPathFullName
         } else {
             Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
         }
