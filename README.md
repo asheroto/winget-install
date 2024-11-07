@@ -1,4 +1,4 @@
-![winget-install screenshot](![screenshot](https://github.com/user-attachments/assets/a0019f96-dae6-4ca5-83b4-6caa10d83294))
+![winget-install screenshot](https://github.com/user-attachments/assets/a0019f96-dae6-4ca5-83b4-6caa10d83294)
 
 [![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/winget-install?label=PowerShell%20Gallery%20downloads)](https://www.powershellgallery.com/packages/winget-install)
 [![GitHub Downloads - All Releases](https://img.shields.io/github/downloads/asheroto/winget-install/total?label=release%20downloads)](https://github.com/asheroto/winget-install/releases)
