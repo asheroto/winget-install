@@ -990,33 +990,36 @@ try {
     # winget
     # ============================================================================ #
 
-    try {
-        Write-Output "Installing NuGet package provider..."
-        if ($Debug) {
-            try { Install-PackageProvider -Name NuGet -Force } catch { }
-        } else {
-            try { Install-PackageProvider -Name NuGet -Force | Out-Null } catch { }
-        }
+    if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -ne 2019) {
 
-        Write-Output "Installing Microsoft.WinGet.Client module..."
-        if ($Debug) {
-            try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery } catch { }
-        } else {
-            try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery *>&1 | Out-Null } catch { }
-        }
+        try {
+            Write-Output "Installing NuGet package provider..."
+            if ($Debug) {
+                try { Install-PackageProvider -Name NuGet -Force } catch { }
+            } else {
+                try { Install-PackageProvider -Name NuGet -Force | Out-Null } catch { }
+            }
 
-        Write-Output "Installing winget (this takes a minute or two)..."
-        if ($Debug) {
-            try { Repair-WinGetPackageManager -AllUsers } catch { }
-        } else {
-            try { Repair-WinGetPackageManager -AllUsers *>&1 | Out-Null } catch { }
+            Write-Output "Installing Microsoft.WinGet.Client module..."
+            if ($Debug) {
+                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery } catch { }
+            } else {
+                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery *>&1 | Out-Null } catch { }
+            }
+
+            Write-Output "Installing winget (this takes a minute or two)..."
+            if ($Debug) {
+                try { Repair-WinGetPackageManager -AllUsers } catch { }
+            } else {
+                try { Repair-WinGetPackageManager -AllUsers *>&1 | Out-Null } catch { }
+            }
+        } catch {
+            $errorHandled = Handle-Error $_
+            if ($null -ne $errorHandled) {
+                throw $errorHandled
+            }
+            $errorHandled = $null
         }
-    } catch {
-        $errorHandled = Handle-Error $_
-        if ($null -ne $errorHandled) {
-            throw $errorHandled
-        }
-        $errorHandled = $null
     }
 
     # ============================================================================ #
@@ -1139,7 +1142,6 @@ try {
         if ($null -ne $WinGetFolderPath) {
             $WinGetFolderPath = $WinGetFolderPath.FullName
             # Fix Permissions by adding Administrators group with FullControl
-            Write-Output "Fixing permissions for $WinGetFolderPath..."
             Set-PathPermissions -Path $WinGetFolderPath
 
             # Add Environment Path
