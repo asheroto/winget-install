@@ -852,7 +852,7 @@ function TryRemove {
     Tries to remove a specified file if it exists.
 
     .DESCRIPTION
-    This function checks if the specified file exists and attempts to remove it. 
+    This function checks if the specified file exists and attempts to remove it.
     It will not produce an error if the file does not exist or if the removal fails.
 
     .PARAMETER FilePath
@@ -1144,12 +1144,7 @@ try {
             # Fix Permissions by adding Administrators group with FullControl
             Write-Output "Fixing permissions for $WinGetFolderPath..."
 
-            $administratorsGroupSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
-            $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
-            $acl = Get-Acl $WinGetFolderPath
-            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($administratorsGroup, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
-            $acl.SetAccessRule($accessRule)
-            Set-Acl -Path $WinGetFolderPath -AclObject $acl
+            Set-PathPermissions -Path $WinGetFolderPath
 
             # Add Environment Path
             Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
