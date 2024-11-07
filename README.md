@@ -16,7 +16,7 @@
 > [!NOTE]  
 > **What's New?**  
 > - Version 5 Released!  
-> - In response to the evolving nature of WinGet methods and dependencies, we have updated the installation approach to use `Repair-WinGetPackageManager`, allowing Microsoft to manage these dependencies directly.  
+> - In response to the evolving nature of WinGet methods and dependencies, we have updated the installation approach to use `Repair-WinGetPackageManager`, allowing Microsoft to manage these dependencies directly. This will help avoid some of the issues faced when installing WinGet.
 > - Server 2019 will continue through the traditional method.
 
 ## Table of Contents
