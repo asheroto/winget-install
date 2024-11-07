@@ -583,7 +583,7 @@ function ExitWithDelay {
     if ($host.Name -eq 'ConsoleHost') {
         return
     } else {
-        exit <code>
+        exit $ExitCode
     }
 }
 
