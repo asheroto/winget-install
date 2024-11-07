@@ -997,7 +997,7 @@ try {
 
         Write-Output "Installing Microsoft.WinGet.Client module..."
         try {
-            Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery *>&1 | Out-Null
+            Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery *>&1 | Out-Null
         } catch {
             # Ignore due to bug
         }
