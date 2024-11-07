@@ -990,23 +990,25 @@ try {
     # ============================================================================ #
 
     try {
-        # Install using Repair-WinGetPackageManager
-        $progressPreference = 'silentlyContinue'
         Write-Output "Installing NuGet package provider..."
-        Install-PackageProvider -Name NuGet -Force | Out-Null
+        if ($Debug) {
+            try { Install-PackageProvider -Name NuGet -Force } catch { }
+        } else {
+            try { Install-PackageProvider -Name NuGet -Force | Out-Null } catch { }
+        }
 
         Write-Output "Installing Microsoft.WinGet.Client module..."
-        try {
-            Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery *>&1 | Out-Null
-        } catch {
-            # Ignore due to bug
+        if ($Debug) {
+            try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery } catch { }
+        } else {
+            try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery *>&1 | Out-Null } catch { }
         }
 
         Write-Output "Installing winget (this takes a minute or two)..."
-        try {
-            Repair-WinGetPackageManager -AllUsers *>&1 | Out-Null
-        } catch {
-            # Ignore due to bug
+        if ($Debug) {
+            try { Repair-WinGetPackageManager -AllUsers } catch { }
+        } else {
+            try { Repair-WinGetPackageManager -AllUsers *>&1 | Out-Null } catch { }
         }
     } catch {
         $errorHandled = Handle-Error $_
