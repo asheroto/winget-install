@@ -769,6 +769,7 @@ function Set-PathPermissions {
     Set-PathPermissions -Path "C:\Program Files\MyApp"
     #>
 
+    Write-Debug "Setting full control permissions for Administrators group on $Path."
     $administratorsGroupSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
     $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
     $acl = Get-Acl $Path
