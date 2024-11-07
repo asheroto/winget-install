@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 4.2.0
+.VERSION 5.0.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -51,7 +51,7 @@
 [Version 4.1.1] - Minor revisions to comments & debug output.
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 [Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
-[Version 4.2.0] - Changed install method to use winget-cli Repair-WingetPackageManager. Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion. Adjusted permissions of winget folder path for Server 2019.
+[Version 5.0.0] - Completely changed method to use winget-cli Repair-WingetPackageManager. Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion. Adjusted permissions of winget folder path for Server 2019.
 
 #>
 
