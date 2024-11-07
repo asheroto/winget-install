@@ -51,7 +51,7 @@
 [Version 4.1.1] - Minor revisions to comments & debug output.
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 [Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
-[Version 4.2.0] - Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion.
+[Version 4.2.0] - Added fixes for dependencies. Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion. Adjusted permissions of winget folder path for Server 2019.
 
 #>
 
@@ -767,12 +767,15 @@ function Set-PathPermissions {
     Set-PathPermissions -Path "C:\Program Files\MyApp"
     #>
 
-    # Fix Permissions
-    Write-Debug "Fixing permissions for $Path..."
-    $acl = Get-Acl $Path
-    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+    # Fix Permissions by adding Administrators group with FullControl
+    Write-Output "Fixing permissions for $WinGetFolderPath..."
+
+    $administratorsGroupSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
+    $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
+    $acl = Get-Acl $WinGetFolderPath
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($administratorsGroup, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
     $acl.SetAccessRule($accessRule)
-    Set-Acl -Path $Path -AclObject $acl
+    Set-Acl -Path $WinGetFolderPath -AclObject $acl
 }
 
 function Test-VCRedistInstalled {
@@ -986,29 +989,29 @@ try {
     # Install prerequisites
     # ============================================================================ #
 
-    Write-Section "Prerequisites"
+    # Write-Section "Prerequisites"
 
-    try {
-        # Download VCLibs
-        $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
-        $VCLibs_Path = New-TemporaryFile2
-        Write-Output "Downloading VCLibs..."
-        Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
-        Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
+    # try {
+    #     # Download VCLibs
+    #     $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
+    #     $VCLibs_Path = New-TemporaryFile2
+    #     Write-Output "Downloading VCLibs..."
+    #     Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
+    #     Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
 
-        # Download UI.Xaml
-        $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.${arch}.appx"
-        $UIXaml_Path = New-TemporaryFile2
-        Write-Output "Downloading UI.Xaml..."
-        Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path"
-        Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
-    } catch {
-        $errorHandled = Handle-Error $_
-        if ($null -ne $errorHandled) {
-            throw $errorHandled
-        }
-        $errorHandled = $null
-    }
+    #     # Download UI.Xaml
+    #     $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.${arch}.appx"
+    #     $UIXaml_Path = New-TemporaryFile2
+    #     Write-Output "Downloading UI.Xaml..."
+    #     Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path"
+    #     Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
+    # } catch {
+    #     $errorHandled = Handle-Error $_
+    #     if ($null -ne $errorHandled) {
+    #         throw $errorHandled
+    #     }
+    #     $errorHandled = $null
+    # }
 
     # ============================================================================ #
     #  winget
@@ -1018,30 +1021,57 @@ try {
 
     # winget
     try {
-        # Download winget license
-        $winget_license_path = New-TemporaryFile2
-        $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml"
-        Write-Output "Downloading winget license..."
-        Write-Debug "Downloading winget license from $winget_license_url to $winget_license_path`n`n"
-        Invoke-WebRequest -Uri $winget_license_url -OutFile $winget_license_path
+        # Install using Repair-WinGetPackageManager
+        $progressPreference = 'silentlyContinue'
+        Write-Output "Installing NuGet package provider..."
+        Install-PackageProvider -Name NuGet -Force | Out-Null
 
-        # Download winget
-        $winget_path = New-TemporaryFile2
-        $winget_url = "https://aka.ms/getwinget"
-        Write-Output "Downloading winget..."
-        Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
-        Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
+        Write-Output "Installing Microsoft.WinGet.Client module..."
+        try {
+            Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery *>&1 | Out-Null
+        } catch {
+            # Ignore due to bug
+        }
 
-        # Install everything
-        Write-Output "Installing winget and its dependencies..."
-        Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
+        Write-Output "Installing winget (this takes a minute or two)..."
+        try {
+            Repair-WinGetPackageManager -AllUsers *>&1 | Out-Null
+        } catch {
+            # Ignore due to bug
+        }
 
-        # Remove temporary files
-        Write-Debug "Removing temporary files..."
-        TryRemove $VCLibs_Path
-        TryRemove $UIXaml_Path
-        TryRemove $winget_path
-        TryRemove $winget_license_path
+        # # Download DesktopAppInstaller_Dependencies.zip
+        # $winget_dependencies_path = New-TemporaryFile2
+        # $winget_dependencies_url = Get-WingetDownloadUrl -Match "DesktopAppInstaller_Dependencies.zip"
+        # Write-Output "Downloading DesktopAppInstaller_Dependencies.zip..."
+        # Write-Output "Downloading winget dependencies..."
+        # Write-Debug "Downloading winget dependencies from $winget_dependencies_url to $winget_dependencies_path`n`n"
+        # Invoke-WebRequest -Uri $winget_dependencies_url -OutFile $winget_dependencies_path
+
+        # # Download winget license
+        # $winget_license_path = New-TemporaryFile2
+        # $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml"
+        # Write-Output "Downloading winget license..."
+        # Write-Debug "Downloading winget license from $winget_license_url to $winget_license_path`n`n"
+        # Invoke-WebRequest -Uri $winget_license_url -OutFile $winget_license_path
+
+        # # Download winget
+        # $winget_path = New-TemporaryFile2
+        # $winget_url = "https://aka.ms/getwinget"
+        # Write-Output "Downloading winget..."
+        # Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
+        # Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
+
+        # # Install everything
+        # Write-Output "Installing winget and its dependencies..."
+        # Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
+
+        # # Remove temporary files
+        # Write-Debug "Removing temporary files..."
+        # TryRemove $VCLibs_Path
+        # TryRemove $UIXaml_Path
+        # TryRemove $winget_path
+        # TryRemove $winget_license_path
     } catch {
         $errorHandled = Handle-Error $_
         if ($null -ne $errorHandled) {
@@ -1054,7 +1084,7 @@ try {
     # Adjust PATH environment variable
     # ============================================================================ #
 
-    # If NOT Server 2019, check PATH environment variable this way
+    <#     # If NOT Server 2019, check PATH environment variable this way
     if (!($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -eq 2019)) {
         Write-Output "`nChecking PATH environment variable..."
 
@@ -1071,7 +1101,7 @@ try {
         } else {
             Write-Warning "Could not locate winget in folder %USERPROFILE%\AppData\Local\Microsoft\WindowsApps."
         }
-    }
+    } #>
 
     # ============================================================================ #
     #  Server 2019 only
@@ -1153,19 +1183,19 @@ try {
         # Register winget
         # ============================================================================ #
 
-        # If winget is not detected as a command, try registering it
-        Write-Section "Registering"
-        try {
-            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ErrorAction Stop
-            Write-Output "winget command registered successfully."
-        } catch {
-            Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
-            $errorHandled = Handle-Error $_
-            if ($null -ne $errorHandled) {
-                throw $errorHandled
-            }
-            $errorHandled = $null
-        }
+        # # If winget is not detected as a command, try registering it
+        # Write-Section "Registering"
+        # try {
+        #     Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ErrorAction Stop
+        #     Write-Output "winget command registered successfully."
+        # } catch {
+        #     Write-Warning "Unable to register winget. You may need to restart your computer for winget to work."
+        #     $errorHandled = Handle-Error $_
+        #     if ($null -ne $errorHandled) {
+        #         throw $errorHandled
+        #     }
+        #     $errorHandled = $null
+        # }
 
         # If winget is still not detected as a command, show warning
         if (Get-WingetStatus -eq $false) {
