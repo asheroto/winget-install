@@ -1160,10 +1160,10 @@ try {
 
         if ($null -ne $WinGetFolderPath) {
             # Fix Permissions by adding Administrators group with FullControl
-            Set-PathPermissions -FolderPath $WinGetFolderPathFullName
+            Set-PathPermissions -FolderPath $WinGetFolderPath
 
             # Add Environment Path
-            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPathFullName
+            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
         } else {
             Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
         }
