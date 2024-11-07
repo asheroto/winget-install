@@ -73,7 +73,7 @@
     -   Installs the [Microsoft.WinGet.Client](https://www.powershellgallery.com/packages/Microsoft.WinGet.Client/) from PowerShell Gallery
     -   Runs `Repair-WinGetPackageManager -AllUsers` which actually installs WinGet and its dependencies, fixing any issues along the way
 -   Server 2019 only
-    -   Uses the UI.Xaml and VCLibs as [recommended by Microsoft](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-WinGet-on-windows-sandbox)
+    -   Uses the UI.Xaml and VCLibs as [recommended by Microsoft](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox)
     -   The WinGet-cli license is downloaded using the latest version from GitHub
     -   Installs Visual C++ Redistributable if version 14 or higher is not already installed
     -   [WinGet-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
@@ -89,7 +89,7 @@
 Open PowerShell as Administrator and type
 
 ```powershell
-Install-Script WinGet-install -Force
+Install-Script winget-install -Force
 ```
 
 Follow the prompts to complete the installation (you can tap `A` to accept all prompts or `Y` to select them individually.
@@ -99,12 +99,12 @@ Follow the prompts to complete the installation (you can tap `A` to accept all p
 #### Usage
 
 ```powershell
-WinGet-install
+winget-install
 ```
 
 If WinGet is already installed, you can use the `-Force` parameter to force the script to run anyway.
 
-The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `WinGet-install`.
+The script is published on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install) under `winget-install`.
 
 ### Method 2 - One Line Command (Runs Immediately)
 
@@ -129,13 +129,13 @@ Due to the nature of how PowerShell works, you won't be able to use any paramete
 To make it easier to remember, you can also use the URL [WinGet.pro](https://winget.pro) which redirects to the same URL. This URL is provided courtesy of [Omaha Consulting](https://github.com/omaha-consulting).
 
 ```powershell
-irm WinGet.pro | iex
+irm winget.pro | iex
 ```
 
 Due to the nature of how PowerShell works, you won't be able to use any parameters like `-Force` with this command line. You can set the global variable `$Force` to `$true` and the script should pick up on it ([more info](#global-variables)), but if for some reason that doesn't work or you absolutely need to use a one-line command with parameters, you can use the following:
 
 ```powershell
-&([ScriptBlock]::Create((irm WinGet.pro))) -Force
+&([ScriptBlock]::Create((irm winget.pro))) -Force
 ```
 
 #### Option C: direct release URL
@@ -148,10 +148,10 @@ irm https://github.com/asheroto/winget-install/releases/latest/download/winget-i
 
 ### Method 3 - Download Locally and Run
 
-As a more conventional approach, download the latest [WinGet-install.ps1](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) from [Releases](https://github.com/asheroto/winget-install/releases), then run the script as follows:
+As a more conventional approach, download the latest [winget-install.ps1](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) from [Releases](https://github.com/asheroto/winget-install/releases), then run the script as follows:
 
 ```powershell
-.\WinGet-install.ps1
+.\winget-install.ps1
 ```
 
 You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force = $true` and `$ForceClose = $true` global session variables if preferred.
@@ -178,7 +178,7 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 ### Example Parameters Usage
 
 ```powershell
-WinGet-install -Force
+winget-install -Force
 ```
 
 ## Global Variables
@@ -195,7 +195,7 @@ Global variables are _optional_ and are only needed if you don't want to use par
 
 ```powershell
 $Force = $true
-WinGet-install
+winget-install
 ```
 
 ## Troubleshooting
@@ -203,10 +203,10 @@ WinGet-install
 -   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2.
 -   If you run into an issue, please ensure your system is compatible & fully updated.
 -   Sometimes PowerShell closes the window before you can read the output. To prevent this, you can use the `-Wait` parameter to pause the script for a few seconds or the `-NoExit` parameter to keep the window open indefinitely. Improving script exit functionality is on our TODO list.
--   Try running `WinGet-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs.
+-   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs.
 -   Try using the `-Debug` parameters to see if it provides any additional information.
 -   If you're getting a `resource in use` error message, run the script again with the `-ForceClose` parameter.
--   Try [installing WinGet manually](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-WinGet-on-windows-sandbox) to see if the issue exists with WinGet itself.
+-   Try [installing WinGet manually](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox) to see if the issue exists with WinGet itself.
 -   If the issue occurs when installing WinGet manually, please open an [issue on the WinGet-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script).
 -   Check the [WinGet-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md).
 -   Note that WinGet [does not officially support](https://github.com/microsoft/winget-cli/discussions/962) installing or running with the `SYSTEM` account.
@@ -215,9 +215,3 @@ WinGet-install
 ## Contributing
 
 If you'd like to help develop this project: fork the repo, edit the code, then submit a pull request. 😊
-
-### To do list
-
--   [x] Use aka.ms shortened URLs and refactor script.
--   [x] Add support for Server 2019 (PR #43).
--   [ ] Improve error/exit handling by moving logic into its own functions. Remove the `exit` command to avoid script exit. This way we let the script exit naturally and may not even need the `Wait` or `NoExit` param.
