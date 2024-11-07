@@ -580,9 +580,11 @@ function ExitWithDelay {
     }
 
     # Exit the script with error code
-    # Some systems may accidentally close the window, but that's a PowerShell bug
-    # https://stackoverflow.com/questions/67593504/why-wont-the-exit-function-work-in-my-powershell-code
-    Exit $ExitCode
+    if ($host.Name -eq 'ConsoleHost') {
+        return
+    } else {
+        exit <code>
+    }
 }
 
 function Import-GlobalVariable {
