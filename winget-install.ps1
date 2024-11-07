@@ -1165,7 +1165,7 @@ try {
 
     # Check if winget is installed
     if (Get-WingetStatus -eq $true) {
-        Write-Output "winget is installed and working now, you can go ahead and use it."
+        Write-Output "winget is installed and working. You can go ahead and use it."
     } else {
         # If winget is still not detected as a command, show warning
         if (Get-WingetStatus -eq $false) {
