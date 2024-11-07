@@ -769,15 +769,12 @@ function Set-PathPermissions {
     Set-PathPermissions -Path "C:\Program Files\MyApp"
     #>
 
-    # Fix Permissions by adding Administrators group with FullControl
-    Write-Output "Fixing permissions for $WinGetFolderPath..."
-
     $administratorsGroupSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
     $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
-    $acl = Get-Acl $WinGetFolderPath
+    $acl = Get-Acl $Path
     $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($administratorsGroup, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
     $acl.SetAccessRule($accessRule)
-    Set-Acl -Path $WinGetFolderPath -AclObject $acl
+    Set-Acl -Path $Path -AclObject $acl
 }
 
 function Test-VCRedistInstalled {
@@ -1143,7 +1140,6 @@ try {
             $WinGetFolderPath = $WinGetFolderPath.FullName
             # Fix Permissions by adding Administrators group with FullControl
             Write-Output "Fixing permissions for $WinGetFolderPath..."
-
             Set-PathPermissions -Path $WinGetFolderPath
 
             # Add Environment Path
