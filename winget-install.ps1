@@ -1017,10 +1017,13 @@ try {
 
         if ($null -ne $WinGetFolderPath) {
             $WinGetFolderPath = $WinGetFolderPath.FullName
-            # Fix Permissions
+            # Fix Permissions by adding Administrators group with FullControl
             Write-Output "Fixing permissions for $WinGetFolderPath..."
+
+            $administratorsGroupSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
+            $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
             $acl = Get-Acl $WinGetFolderPath
-            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($administratorsGroup, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
             $acl.SetAccessRule($accessRule)
             Set-Acl -Path $WinGetFolderPath -AclObject $acl
 
