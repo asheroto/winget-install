@@ -83,7 +83,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 4.2.0
+	Version      : 5.0.0
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -101,7 +101,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '4.2.0'
+$CurrentVersion = '5.0.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
