@@ -1139,12 +1139,23 @@ try {
         $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
         Write-Debug "WinGetFolderPath: $WinGetFolderPath"
 
-        # Add environment path if not already present
-        Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath -Scope 'System'
+        if ($null -ne $WinGetFolderPath) {
+            $WinGetFolderPath = $WinGetFolderPath.FullName
+            # Fix Permissions by adding Administrators group with FullControl
+            Write-Output "Fixing permissions for $WinGetFolderPath..."
 
-        # Fix permissions
-        Write-Output "Fixing permissions for winget folder..."
-        Set-PathPermissions -Path $WinGetFolderPath
+            $administratorsGroupSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-544")
+            $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
+            $acl = Get-Acl $WinGetFolderPath
+            $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($administratorsGroup, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+            $acl.SetAccessRule($accessRule)
+            Set-Acl -Path $WinGetFolderPath -AclObject $acl
+
+            # Add Environment Path
+            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
+        } else {
+            Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
+        }
     }
 
     # ============================================================================ #
