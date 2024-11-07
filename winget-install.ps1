@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.0
+.VERSION 5.0.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -52,6 +52,7 @@
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 [Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
 [Version 5.0.0] - Completely changed method to use winget-cli Repair-WingetPackageManager. Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion. Adjusted permissions of winget folder path for Server 2019. Improved exit handling to avoid PowerShell window closing.
+[Version 5.0.1] - Fix typo in variable name.
 
 #>
 
@@ -83,7 +84,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.0
+	Version      : 5.0.1
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -101,7 +102,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.0'
+$CurrentVersion = '5.0.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
