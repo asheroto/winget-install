@@ -69,7 +69,7 @@
 -   Checks Windows OS version for compatibility (Windows 10, Windows 11, Server 2019/2022)
 -   If Windows 10, verifies release ID for compatibility (must be 1809 or newer)
 -   All OSes except Server 2019
-    -   Installs the NuGet package provider (for PowerShell Gallery)
+    -   Installs the NuGet package provider for PowerShell Gallery (if not already present)
     -   Installs the [Microsoft.WinGet.Client](https://www.powershellgallery.com/packages/Microsoft.WinGet.Client/) from PowerShell Gallery
     -   Runs `Repair-WinGetPackageManager -AllUsers` which actually installs WinGet and its dependencies, fixing any issues along the way
 -   Server 2019 only
