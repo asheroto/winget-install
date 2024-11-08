@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.2
+.VERSION 5.0.3
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -54,6 +54,7 @@
 [Version 5.0.0] - Completely changed method to use winget-cli Repair-WingetPackageManager. Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion. Adjusted permissions of winget folder path for Server 2019. Improved exit handling to avoid PowerShell window closing.
 [Version 5.0.1] - Fix typo in variable name.
 [Version 5.0.2] - Added detection of NuGet and PowerShell version to determine if package provider installation is needed.
+[Version 5.0.3] - Fix missing argument in call to Add-ToEnvironmentPath.
 
 #>
 
@@ -85,7 +86,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.2
+	Version      : 5.0.3
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -103,7 +104,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.2'
+$CurrentVersion = '5.0.3'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -711,7 +712,10 @@ function Path-ExistsInEnvironment {
 
 function Add-ToEnvironmentPath {
     param (
+        [Parameter(Mandatory=$true)]
         [string]$PathToAdd,
+
+        [Parameter(Mandatory=$true)]
         [ValidateSet('User', 'System')]
         [string]$Scope
     )
