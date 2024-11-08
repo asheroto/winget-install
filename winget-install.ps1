@@ -1200,7 +1200,7 @@ try {
             Set-PathPermissions -FolderPath $WinGetFolderPath
 
             # Add Environment Path
-            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath
+            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath -Scope 'System'
         } else {
             Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
         }
