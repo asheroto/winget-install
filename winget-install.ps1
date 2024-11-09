@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.3
+.VERSION 5.0.4
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -52,9 +52,10 @@
 [Version 4.1.2] - Implemented Visual C++ Redistributable version detection to ensure compatibility with winget.
 [Version 4.1.3] - Added additional debug output for Visual C++ Redistributable version detection.
 [Version 5.0.0] - Completely changed method to use winget-cli Repair-WingetPackageManager. Added environment path detection and addition if needed. Added NoExit parameter to prevent script from exiting after completion. Adjusted permissions of winget folder path for Server 2019. Improved exit handling to avoid PowerShell window closing.
-[Version 5.0.1] - Fix typo in variable name.
+[Version 5.0.1] - Fixed typo in variable name.
 [Version 5.0.2] - Added detection of NuGet and PowerShell version to determine if package provider installation is needed.
-[Version 5.0.3] - Fix missing argument in call to Add-ToEnvironmentPath.
+[Version 5.0.3] - Fixed missing argument in call to Add-ToEnvironmentPath.
+[Version 5.0.4] - Fixed bug with UpdateSelf function. Fixed bug when installing that may cause NuGet prompt to not be suppressed. Introduced Install-NuGetIfRequired function.
 
 #>
 
@@ -86,7 +87,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.3
+	Version      : 5.0.4
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -104,7 +105,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.3'
+$CurrentVersion = '5.0.4'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -316,16 +317,8 @@ function UpdateSelf {
             Write-Output "Updating script to version $psGalleryScriptVersion..."
 
             # Check if running in PowerShell 7 or greater
-            Write-Debug "Checking PowerShell version..."
-            if ($PSVersionTable.PSVersion.Major -lt 7) {
-                # Install NuGet PackageProvider if not already installed
-                Write-Debug "PowerShell 7 or greater not detected. Installing NuGet PackageProvider..."
-                if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
-                    Install-PackageProvider -Name "NuGet" -Force
-                }
-            } else {
-                Write-Debug "PowerShell 7 or greater detected. Skipping NuGet PackageProvider installation."
-            }
+            Write-Debug "Checking if NuGet PackageProvider is already installed..."
+            Install-NuGetIfRequired
 
             # Trust the PSGallery if not already trusted
             $psRepoInstallationPolicy = (Get-PSRepository -Name 'PSGallery').InstallationPolicy
@@ -712,10 +705,10 @@ function Path-ExistsInEnvironment {
 
 function Add-ToEnvironmentPath {
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string]$PathToAdd,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [ValidateSet('User', 'System')]
         [string]$Scope
     )
@@ -911,6 +904,53 @@ function TryRemove {
     }
 }
 
+function Install-NuGetIfRequired {
+    <#
+    .SYNOPSIS
+    Checks if the NuGet PackageProvider is installed and installs it if required.
+
+    .DESCRIPTION
+    This function checks whether the NuGet PackageProvider is already installed on the system. If it is not found and the current PowerShell version is less than 7, it attempts to install the NuGet provider using Install-PackageProvider. 
+    For PowerShell 7 or greater, it assumes NuGet is available by default and advises reinstallation if NuGet is missing.
+
+    .PARAMETER Debug
+    Enables debug output for additional details during installation.
+
+    .EXAMPLE
+    Install-NuGetIfRequired
+    # Checks for the NuGet provider and installs it if necessary.
+
+    .NOTES
+    This function only attempts to install NuGet if the PowerShell version is less than 7.
+    For PowerShell 7 or greater, NuGet is typically included by default and does not require installation.
+    #>
+
+    # Check if NuGet PackageProvider is already installed, skip package provider installation if found
+    if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
+        Write-Debug "NuGet PackageProvider not found."
+
+        # Check if running in PowerShell version less than 7
+        if ($PSVersionTable.PSVersion.Major -lt 7) {
+            # Install NuGet PackageProvider if running PowerShell version less than 7
+            # PowerShell 7 has limited support for installing package providers, but NuGet is available by default in PowerShell 7 so installation is not required
+
+            Write-Debug "Installing NuGet PackageProvider..."
+
+            if ($Debug) {
+                try { Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap } catch { }
+            } else {
+                try { Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap | Out-Null } catch {}
+            }
+        } else {
+            # NuGet should be included by default in PowerShell 7, so if it's not detected, advise reinstallation
+            Write-Warning "NuGet is not detected in PowerShell 7. Consider reinstalling PowerShell 7, as NuGet should be included by default."
+        }
+    } else {
+        # NuGet PackageProvider is already installed
+        Write-Debug "NuGet PackageProvider is already installed. Skipping installation."
+    }
+}
+
 # ============================================================================ #
 # Initial checks
 # ============================================================================ #
@@ -1025,39 +1065,7 @@ try {
 
         try {
             Write-Debug "Checking if NuGet PackageProvider is already installed..."
-
-            # Check if NuGet PackageProvider is already installed, skip package provider installation if found
-            if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
-                Write-Debug "NuGet PackageProvider not found."
-
-                # Check if running in PowerShell version less than 7
-                if ($PSVersionTable.PSVersion.Major -lt 7) {
-                    # Install NuGet PackageProvider if running PowerShell version less than 7
-                    # PowerShell 7 has limited support for installing package providers, but NuGet is available by default in PowerShell 7 so installation is not required
-
-                    Write-Debug "Installing NuGet PackageProvider..."
-
-                    if ($Debug) {
-                        try {
-                            Install-PackageProvider -Name "NuGet" -Force
-                        } catch {
-                            Write-Debug "Failed to install NuGet PackageProvider: $_"
-                        }
-                    } else {
-                        try {
-                            Install-PackageProvider -Name "NuGet" -Force | Out-Null
-                        } catch {
-                            Write-Debug "Failed to install NuGet PackageProvider: $_"
-                        }
-                    }
-                } else {
-                    # NuGet should be included by default in PowerShell 7, so if it's not detected, advise reinstallation
-                    Write-Warning "NuGet is not detected in PowerShell 7. Consider reinstalling PowerShell 7, as NuGet should be included by default."
-                }
-            } else {
-                # NuGet PackageProvider is already installed
-                Write-Debug "NuGet PackageProvider is already installed. Skipping installation."
-            }
+            Install-NuGetIfRequired
 
             Write-Output "Installing Microsoft.WinGet.Client module..."
             if ($Debug) {
