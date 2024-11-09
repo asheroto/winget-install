@@ -937,9 +937,9 @@ function Install-NuGetIfRequired {
             Write-Debug "Installing NuGet PackageProvider..."
 
             if ($Debug) {
-                try { Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap } catch { }
+                try { Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap -ErrorAction SilentlyContinue } catch { }
             } else {
-                try { Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap | Out-Null } catch {}
+                try { Install-PackageProvider -Name "NuGet" -Force -ForceBootstrap -ErrorAction SilentlyContinue | Out-Null } catch {}
             }
         } else {
             # NuGet should be included by default in PowerShell 7, so if it's not detected, advise reinstallation
@@ -1069,9 +1069,9 @@ try {
 
             Write-Output "Installing Microsoft.WinGet.Client module..."
             if ($Debug) {
-                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery } catch { }
+                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery -ErrorAction SilentlyContinue } catch { }
             } else {
-                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery *>&1 | Out-Null } catch { }
+                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery -ErrorAction SilentlyContinue *>&1 | Out-Null } catch { }
             }
 
             Write-Output "Installing winget (this takes a minute or two)..."
