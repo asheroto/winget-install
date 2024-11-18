@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.4
+.VERSION 5.0.5
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -56,6 +56,7 @@
 [Version 5.0.2] - Added detection of NuGet and PowerShell version to determine if package provider installation is needed.
 [Version 5.0.3] - Fixed missing argument in call to Add-ToEnvironmentPath.
 [Version 5.0.4] - Fixed bug with UpdateSelf function. Fixed bug when installing that may cause NuGet prompt to not be suppressed. Introduced Install-NuGetIfRequired function.
+[Version 5.0.5] - Fixed exit code issue. Fixes #52.
 
 #>
 
@@ -87,7 +88,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.4
+	Version      : 5.0.5
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -105,7 +106,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.4'
+$CurrentVersion = '5.0.5'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -582,8 +583,8 @@ function ExitWithDelay {
         Read-Host
     }
 
-    # Exit the script with error code
-    if ($host.Name -eq 'ConsoleHost') {
+    # Exit the script with exit code
+    if ($MyInvocation.CommandOrigin -eq "Runspace") {
         Break
     } else {
         Exit $ExitCode
