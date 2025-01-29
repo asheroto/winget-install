@@ -168,7 +168,7 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 **No parameters are required** to run the script, but there are some optional parameters to use if needed.
 
 | Parameter         | Description                                                                                                                                                                                                                                                   |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `-Debug`          | Enables debug mode, showing additional information for troubleshooting.                                                                                                                                                                                       |
 | `-Force`          | Ensures the installation of WinGet and its dependencies, even if they are already present.                                                                                                                                                                    |
 | `-ForceClose`     | If Windows Terminal has trouble installing WinGet, use this parameter to relaunch the script in conhost.exe and automatically end any active processes associated with WinGet that could interfere with the installation.                                     |
@@ -177,7 +177,7 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 | `-NoExit`         | By default, the script exits immediately after completion. Although this is not supposed to close the PowerShell window, sometimes it still occurs. Use this parameter to pause the script indefinitely after execution; pressing Enter will exit the script. |
 | `-UpdateSelf`     | Updates the script to the latest version.                                                                                                                                                                                                                     |
 | `-Version`        | Displays the version of the script.                                                                                                                                                                                                                           |
-| `-Help`           | Displays the full help information for the script.                                                                                                                                                                                                            |     |
+| `-Help`           | Displays the full help information for the script.                                                                                                                                                                                                            |
 
 ### Example Parameters Usage
 
