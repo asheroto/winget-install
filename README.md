@@ -159,6 +159,10 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 > [!TIP]
 > If for some reason your PowerShell window closes at the end of the script and you don't want it to, or don't want your other scripts to be interrupted, you can wrap the command in a `powershell "COMMAND HERE"`. For example, `powershell "irm asheroto.com/winget | iex"`.
 
+> [!NOTE]
+> On Windows 11 IoT, you may need to run the following command. Unlike other editions that may prompt about Execution Policy, IoT might not:
+> `powershell -ep B "irm asheroto.com/winget | iex"`
+
 ## Parameters
 
 **No parameters are required** to run the script, but there are some optional parameters to use if needed.
