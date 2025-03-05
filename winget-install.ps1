@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.5
+.VERSION 5.0.6
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -57,6 +57,7 @@
 [Version 5.0.3] - Fixed missing argument in call to Add-ToEnvironmentPath.
 [Version 5.0.4] - Fixed bug with UpdateSelf function. Fixed bug when installing that may cause NuGet prompt to not be suppressed. Introduced Install-NuGetIfRequired function.
 [Version 5.0.5] - Fixed exit code issue. Fixes #52.
+[Version 5.0.6] - Fixed installation issue on Server 2022 by changing installation method to same as Server 2019. Fixes #62.
 
 #>
 
@@ -88,7 +89,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.5
+	Version      : 5.0.6
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -106,7 +107,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.5'
+$CurrentVersion = '5.0.6'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -1060,7 +1061,7 @@ try {
     # winget
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019) {
+    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.NumericVersion -ne 2022) {
 
         Write-Section "winget"
 
@@ -1092,10 +1093,10 @@ try {
     }
 
     # ============================================================================ #
-    #  Server 2019 only
+    #  Server 2019 and Server 2022 only
     # ============================================================================ #
 
-    if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -eq 2019) {
+    if ($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019 -or $osVersion.NumericVersion -eq 2022)) {
 
         # ============================================================================ #
         # Install prerequisites
@@ -1169,7 +1170,7 @@ try {
         # Visual C++ Redistributable
         # ============================================================================ #
 
-        Write-Section "Visual C++ Redistributable (Server 2019 only)"
+        Write-Section "Visual C++ Redistributable (Server 2019 and 2022 only)"
 
         # Test if Visual C++ Redistributable is not installed
         if (!(Test-VCRedistInstalled)) {
@@ -1201,8 +1202,8 @@ try {
         # Fix environment PATH and permissions
         # ============================================================================ #
 
-        # Fix permissions for winget folder (Server 2019 only)
-        Write-Output "Fixing permissions for winget folder (Server 2019 only)..."
+        # Fix permissions for winget folder (Server 2019 and 2022 only)
+        Write-Output "Fixing permissions for winget folder (Server 2019 and 2022 only)..."
 
         # Find winget folder path in Program Files
         $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
