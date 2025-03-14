@@ -58,7 +58,7 @@
 [Version 5.0.4] - Fixed bug with UpdateSelf function. Fixed bug when installing that may cause NuGet prompt to not be suppressed. Introduced Install-NuGetIfRequired function.
 [Version 5.0.5] - Fixed exit code issue. Fixes #52.
 [Version 5.0.6] - Fixed installation issue on Server 2022 by changing installation method to same as Server 2019. Fixes #62.
-[Version 5.0.7] - Added the literal %LOCALAPPDATA% path to the user environment PATH to prevent issues when usernames or user profile paths change, or when using non-Latin characters. Fixes #45. Added support to catch Get-CimInstance errors, lately occuring in Windows Sandbox.
+[Version 5.0.7] - Added the literal %LOCALAPPDATA% path to the user environment PATH to prevent issues when usernames or user profile paths change, or when using non-Latin characters. Fixes #45. Added support to catch Get-CimInstance errors, lately occuring in Windows Sandbox. Removed Server 2022 changes introduced in version 5.0.6. Fixes #57.
 
 #>
 
@@ -1070,7 +1070,7 @@ try {
     # winget (regular method, Windows 10+)
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.NumericVersion -ne 2022 -and $AlternateInstallMethod -eq $false) {
+    if ($osVersion.NumericVersion -ne 2019 -and $AlternateInstallMethod -eq $false) {
 
         Write-Section "winget"
 
@@ -1106,10 +1106,10 @@ try {
     }
 
     # ============================================================================ #
-    #  Server 2019 and Server 2022 only
+    #  Server 2019 only
     # ============================================================================ #
 
-    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019 -or $osVersion.NumericVersion -eq 2022)) -or $AlternateInstallMethod) {
+    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -or $AlternateInstallMethod) {
 
         # ============================================================================ #
         # Install prerequisites
@@ -1183,7 +1183,7 @@ try {
         # Visual C++ Redistributable
         # ============================================================================ #
 
-        Write-Section "Visual C++ Redistributable (Server 2019 and 2022 only)"
+        Write-Section "Visual C++ Redistributable (Server 2019 only)"
 
         # Test if Visual C++ Redistributable is not installed
         if (!(Test-VCRedistInstalled)) {
@@ -1215,8 +1215,8 @@ try {
         # Fix environment PATH and permissions
         # ============================================================================ #
 
-        # Fix permissions for winget folder (Server 2019 and 2022 only)
-        Write-Output "Fixing permissions for winget folder (Server 2019 and 2022 only)..."
+        # Fix permissions for winget folder (Server 2019 only)
+        Write-Output "Fixing permissions for winget folder (Server 2019 only)..."
 
         # Find winget folder path in Program Files
         $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
@@ -1231,6 +1231,18 @@ try {
         } else {
             Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
         }
+    }
+
+    # ============================================================================ #
+    # Force registration
+    # ============================================================================ #
+    Write-Output "Registering winget..."
+
+    # Register for all except Server 2019
+    if ($osVersion.NumericVersion -ne 2019) {
+        # Register winget
+        Write-Debug "Registering winget..."
+        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
     }
 
     # ============================================================================ #
@@ -1254,7 +1266,8 @@ try {
         Write-Output "winget is installed and working. You can go ahead and use it."
     } else {
         # If winget is still not detected as a command, show warning
-        if (Get-WingetStatus -eq $false) {
+        Write-Debug "Get-WinGetStatus: $(Get-WingetStatus)"
+        if (Get-WingetStatus -ne $true) {
             Write-Warning "winget is installed but is not detected as a command. Try using winget now. If it doesn't work, wait about 1 minute and try again (it is sometimes delayed). Also try restarting your computer."
             Write-Warning "If you restart your computer and the command still isn't recognized, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
             Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate`n`n"
