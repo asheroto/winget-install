@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.6
+.VERSION 5.0.7
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -58,6 +58,7 @@
 [Version 5.0.4] - Fixed bug with UpdateSelf function. Fixed bug when installing that may cause NuGet prompt to not be suppressed. Introduced Install-NuGetIfRequired function.
 [Version 5.0.5] - Fixed exit code issue. Fixes #52.
 [Version 5.0.6] - Fixed installation issue on Server 2022 by changing installation method to same as Server 2019. Fixes #62.
+[Version 5.0.7] - Added the literal %LOCALAPPDATA% path to the user environment PATH to prevent issues when usernames or user profile paths change, or when using non-Latin characters. Fixes #45. Added support to catch Get-CimInstance errors, lately occuring in Windows Sandbox.
 
 #>
 
@@ -89,7 +90,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.6
+	Version      : 5.0.7
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -98,6 +99,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 param (
     [switch]$Force,
     [switch]$ForceClose,
+    [switch]$AlternateInstallMethod,
     [switch]$CheckForUpdate,
     [switch]$Wait,
     [switch]$NoExit,
@@ -107,7 +109,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.6'
+$CurrentVersion = '5.0.7'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -181,7 +183,13 @@ function Get-OSInfo {
         $editionIdValue = $editionIdValue -replace "Server", ""
 
         # Get OS details using Get-CimInstance because the registry key for Name is not always correct with Windows 11
-        $osDetails = Get-CimInstance -ClassName Win32_OperatingSystem
+        try {
+            $osDetails = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        } catch {
+            throw "Unable to run the command ""Get-CimInstance -ClassName Win32_OperatingSystem"". If you're using Window Sandbox, this may be related to a known issue with winget on Windows Sandbox: https://github.com/microsoft/Windows-Sandbox/issues/67"
+        }
+
+        # Get OS caption
         $nameValue = $osDetails.Caption
 
         # Get architecture details of the OS (not the processor)
@@ -961,6 +969,7 @@ function Install-NuGetIfRequired {
 Import-GlobalVariable -VariableName "Debug"
 Import-GlobalVariable -VariableName "ForceClose"
 Import-GlobalVariable -VariableName "Force"
+Import-GlobalVariable -VariableName "AlternateInstallMethod"
 
 # First heading
 Write-Output "winget-install $CurrentVersion"
@@ -1058,10 +1067,10 @@ if ($ForceClose) {
 
 try {
     # ============================================================================ #
-    # winget
+    # winget (regular method, Windows 10+)
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.NumericVersion -ne 2022) {
+    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.NumericVersion -ne 2022 -and $AlternateInstallMethod -eq $false) {
 
         Write-Section "winget"
 
@@ -1090,13 +1099,17 @@ try {
             $errorHandled = $null
         }
 
+        # Add to environment PATH to avoid issues when usernames or user profile paths change, or when using non-Latin characters (see #45)
+        # Adding with literal %LOCALAPPDATA% to ensure it isn't resolved to the current user's LocalAppData as a fixed path
+        Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps" -Scope 'User'
+
     }
 
     # ============================================================================ #
     #  Server 2019 and Server 2022 only
     # ============================================================================ #
 
-    if ($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019 -or $osVersion.NumericVersion -eq 2022)) {
+    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019 -or $osVersion.NumericVersion -eq 2022)) -or $AlternateInstallMethod) {
 
         # ============================================================================ #
         # Install prerequisites
