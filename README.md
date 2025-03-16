@@ -15,7 +15,7 @@
 
 > [!NOTE]  
 > **What's New?**
-> - Addded `-AlternateInstallMethod` parameter to force previous method of installation before use of `Repair-WinGetPackageManager`.
+> - Addded `-AlternateInstallMethod` optional parameter to force previous method of installation before use of `Repair-WinGetPackageManager`.
 
 ## Table of Contents
 
