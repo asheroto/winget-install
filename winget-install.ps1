@@ -145,6 +145,7 @@ if ($PSBoundParameters.ContainsKey('Debug') -and $PSBoundParameters['Debug']) {
 # Check if running as SYSTEM
 $RunAsSystem = $false
 if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name -match "NT AUTHORITY\\SYSTEM") {
+    Write-Debug "Running as SYSTEM"
     $RunAsSystem = $true
 }
 
@@ -160,22 +161,14 @@ function Find-WinGet {
         $WinGetPath = $ResolveWinGetPath[-1].Path
     }
 
-    # Get the User-Context WinGet exe location.
-    $WinGetExePath = Get-Command -Name winget.exe -CommandType Application -ErrorAction SilentlyContinue
+    $WinGet = Join-Path $WinGetPath 'winget.exe'
 
-    # Select the correct WinGet exe
-    if (Test-Path -Path (Join-Path $WinGetPath 'winget.exe')) {
-        # Running in SYSTEM-Context.
-        $WinGet = Join-Path $WinGetPath 'winget.exe'
-    } elseif ($WinGetExePath) {
-        # Get User-Context if SYSTEM-Context not found.
-        $WinGet = $WinGetExePath.Path
+    # Test if WinGet Executable exists
+    if (Test-Path -Path $WinGet) {
+        return $WinGet
     } else {
         return $null
     }
-
-    # Return WinGet Location
-    return $WinGet
 }
 
 function Get-OSInfo {
