@@ -142,6 +142,42 @@ if ($PSBoundParameters.ContainsKey('Debug') -and $PSBoundParameters['Debug']) {
     $ConfirmPreference = 'None'
 }
 
+# Check if running as SYSTEM
+$RunAsSystem = $false
+if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name -match "NT AUTHORITY\\SYSTEM") {
+    $RunAsSystem = $true
+}
+
+# Find the WinGet Executable Loaction (For use when running in SYSTEM context)
+function Find-WinGet {
+    # Get the WinGet path
+    $WinGetPathToResolve = Join-Path -Path $ENV:ProgramFiles -ChildPath 'WindowsApps\Microsoft.DesktopAppInstaller_*_*__8wekyb3d8bbwe'
+    $ResolveWinGetPath = Resolve-Path -Path $WinGetPathToResolve | Sort-Object {
+        [version]($_.Path -replace '^[^\d]+_((\d+\.)*\d+)_.*', '$1')
+    }
+    if ($ResolveWinGetPath) {
+        # If we have multiple versions - use the latest.
+        $WinGetPath = $ResolveWinGetPath[-1].Path
+    }
+
+    # Get the User-Context WinGet exe location.
+    $WinGetExePath = Get-Command -Name winget.exe -CommandType Application -ErrorAction SilentlyContinue
+
+    # Select the correct WinGet exe
+    if (Test-Path -Path (Join-Path $WinGetPath 'winget.exe')) {
+        # Running in SYSTEM-Context.
+        $WinGet = Join-Path $WinGetPath 'winget.exe'
+    } elseif ($WinGetExePath) {
+        # Get User-Context if SYSTEM-Context not found.
+        $WinGet = $WinGetExePath.Path
+    } else {
+        return $null
+    }
+
+    # Return WinGet Location
+    return $WinGet
+}
+
 function Get-OSInfo {
     <#
         .SYNOPSIS
@@ -434,7 +470,11 @@ function Get-WingetStatus {
     #>
 
     # Check if winget is installed
-    $winget = Get-Command -Name winget -ErrorAction SilentlyContinue
+    if ($RunAsSystem) {
+        $winget = Find-WinGet
+    } else {
+        $winget = Get-Command -Name winget -ErrorAction SilentlyContinue
+    }
 
     # If winget is installed, return $true
     if ($null -ne $winget -and $winget -notlike '*failed to run*') {
@@ -776,7 +816,7 @@ function Set-PathPermissions {
     Grants full control permissions for the Administrators group on the specified directory path.
 
     .DESCRIPTION
-    This function sets full control permissions for the Administrators group on the specified directory path. 
+    This function sets full control permissions for the Administrators group on the specified directory path.
     Useful for ensuring that administrators have unrestricted access to a given folder.
 
     .PARAMETER FolderPath
@@ -920,7 +960,7 @@ function Install-NuGetIfRequired {
     Checks if the NuGet PackageProvider is installed and installs it if required.
 
     .DESCRIPTION
-    This function checks whether the NuGet PackageProvider is already installed on the system. If it is not found and the current PowerShell version is less than 7, it attempts to install the NuGet provider using Install-PackageProvider. 
+    This function checks whether the NuGet PackageProvider is already installed on the system. If it is not found and the current PowerShell version is less than 7, it attempts to install the NuGet provider using Install-PackageProvider.
     For PowerShell 7 or greater, it assumes NuGet is available by default and advises reinstallation if NuGet is missing.
 
     .PARAMETER Debug
@@ -1101,7 +1141,9 @@ try {
 
         # Add to environment PATH to avoid issues when usernames or user profile paths change, or when using non-Latin characters (see #45)
         # Adding with literal %LOCALAPPDATA% to ensure it isn't resolved to the current user's LocalAppData as a fixed path
-        Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps" -Scope 'User'
+        if (!$RunAsSystem) {
+            Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps" -Scope 'User'
+        }
 
     }
 
@@ -1239,7 +1281,7 @@ try {
     Write-Output "Registering winget..."
 
     # Register for all except Server 2019
-    if ($osVersion.NumericVersion -ne 2019) {
+    if ($osVersion.NumericVersion -ne 2019 -and $RunAsSystem -eq $false) {
         # Register winget
         Write-Debug "Registering winget..."
         Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
