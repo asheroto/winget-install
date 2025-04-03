@@ -464,7 +464,7 @@ function Get-WingetStatus {
 
     # Check if winget is installed
     if ($RunAsSystem) {
-        $winget = Find-WinGet
+        $winget = & (Find-WinGet) -v
     } else {
         $winget = Get-Command -Name winget -ErrorAction SilentlyContinue
     }
@@ -1103,7 +1103,7 @@ try {
     # winget (regular method, Windows 10+)
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $AlternateInstallMethod -eq $false) {
+    if ($osVersion.NumericVersion -ne 2019 -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false) {
 
         Write-Section "winget"
 
@@ -1134,9 +1134,7 @@ try {
 
         # Add to environment PATH to avoid issues when usernames or user profile paths change, or when using non-Latin characters (see #45)
         # Adding with literal %LOCALAPPDATA% to ensure it isn't resolved to the current user's LocalAppData as a fixed path
-        if (!$RunAsSystem) {
-            Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps" -Scope 'User'
-        }
+        Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps" -Scope 'User'
 
     }
 
@@ -1144,7 +1142,7 @@ try {
     #  Server 2019 only
     # ============================================================================ #
 
-    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -or $AlternateInstallMethod) {
+    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -or $AlternateInstallMethod -or $RunAsSystem) {
 
         # ============================================================================ #
         # Install prerequisites
