@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.7
+.VERSION 5.0.7+
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -90,7 +90,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.7
+	Version      : 5.0.7+
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -109,7 +109,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.7'
+$CurrentVersion = '5.0.7+'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -961,6 +961,124 @@ function Install-NuGetIfRequired {
     }
 }
 
+function Get-ManifestVersion {
+    <#
+    .SYNOPSIS
+    Retrieves the version of the AppxManifest.xml file from a specified library path.
+
+    .DESCRIPTION
+    This function opens a ZIP file at the specified path, reads the AppxManifest.xml file inside it,
+    and retrieves the version information from the manifest.
+
+    .PARAMETER Lib_Path
+    The path to the library (ZIP) file containing the AppxManifest.xml.
+
+    .EXAMPLE
+    Get-ManifestVersion -Lib_Path "C:\path\to\library.zip"
+    #>
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Lib_Path
+    )
+    Write-Debug "Checking manifest version of $Lib_Path ..."
+    # Load ZIP assembly to read the package contents
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($Lib_Path)
+
+    Write-Debug "Reading AppxManifest.xml from $Lib_Path..."
+    # Find and read the AppxManifest.xml
+    $entry = $zip.Entries | Where-Object { $_.FullName -eq "AppxManifest.xml" }
+
+    if ($entry) {
+        $stream = $entry.Open()
+        $reader = New-Object System.IO.StreamReader($stream)
+        [xml]$xml = $reader.ReadToEnd()
+        $reader.Close()
+        $zip.Dispose()
+
+        # Output the version from the manifest
+        $DownloadedLibVersion = $xml.Package.Identity.Version
+        Write-Debug "Downloaded Lib version: $DownloadedLibVersion"
+    } else {
+        Write-Error "AppxManifest.xml not found inside the file: $Lib_Path"
+    }
+
+    return $DownloadedLibVersion
+}
+
+function Get-InstalledLibVersion {
+    <#
+    .SYNOPSIS
+    Retrieves the installed version of a specified library.
+
+    .DESCRIPTION
+    This function checks if a specified library is installed on the system and retrieves its version information.
+
+    .PARAMETER Lib_Name
+    The name of the library to check for installation and retrieve the version.
+
+    .EXAMPLE
+    Get-InstalledLibVersion -Lib_Name "*VCLibs*"
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Lib_Name
+    )
+    Write-Debug "Checking installed Lib version of $Lib_Name ..."
+    $InstalledLib = Get-AppxPackage -Name $Lib_Name -ErrorAction SilentlyContinue
+    if ($InstalledLib) {
+        $InstalledLibVersion = $InstalledLib.Version
+        Write-Debug "Installed Lib version: $InstalledLibVersion"
+    } else {
+        Write-Output "Lib is not installed."
+        $InstalledLibVersion = $null
+    }
+
+    return $InstalledLibVersion
+}
+
+function Install-LibIfRequired {
+    <#
+    .SyNOPSIS
+    Installs a specified library if it is not already installed or if the downloaded version is newer.
+
+    .DESCRIPTION
+    This function checks if a specified library is installed on the system.
+    If it is not installed or if the downloaded version is newer than the installed version, it installs the library.
+
+    .PARAMETER Lib_Name
+    The name of the library to check for installation and retrieve the version.
+
+    .PARAMETER Lib_Path
+    The path to the library (ZIP) file containing the AppxManifest.xml.
+
+    .EXAMPLE
+    Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path "C:\path\to\library.zip"
+    #>
+    param(
+        [Parameter(Mandatory)]
+        [string]$Lib_Name,
+        [Parameter(Mandatory)]
+        [string]$Lib_Path
+    )
+
+    # Check the installed version of Lib
+    $InstalledLibVersion = Get-InstalledLibVersion -Lib_Name $Lib_Name
+
+    # Extract version from the downloaded file
+    $DownloadedLibVersion = Get-ManifestVersion -Lib_Path $Lib_Path
+
+    # Compare versions and install if necessary
+    if (!$InstalledLibVersion -or !$DownloadedLibVersion -or ($DownloadedLibVersion -gt $InstalledLibVersion)) {
+        Write-Output "Installing Lib..."
+        Add-AppxPackage -Path $Lib_Path
+    } else {
+        Write-Output "Installed Lib version is up-to-date or newer. Skipping installation."
+    }
+}
+
+
 # ============================================================================ #
 # Initial checks
 # ============================================================================ #
@@ -1163,7 +1281,18 @@ try {
 
             # Install everything
             Write-Output "Installing winget and its dependencies..."
-            Add-AppxProvisionedPackage -Online -PackagePath $winget_path -DependencyPackagePath $UIXaml_Path, $VCLibs_Path -LicensePath $winget_license_path | Out-Null
+
+            # Install VCLibs
+            Write-Output "Installing VCLibs..."
+            Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path $VCLibs_Path
+
+            # Install UI.Xaml
+            Write-Output "Installing UI.Xaml..."
+            Install-LibIfRequired -Lib_Name "*UI.Xaml*" -Lib_Path $UIXaml_Path
+
+            # Install winget
+            Write-Output "Installing winget..."
+            Add-AppxProvisionedPackage -Online -PackagePath $winget_path -LicensePath $winget_license_path | Out-Null
 
             # Remove temporary files
             Write-Debug "Removing temporary files..."
