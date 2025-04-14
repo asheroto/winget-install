@@ -1249,6 +1249,21 @@ try {
             Write-Output "Downloading UI.Xaml..."
             Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path"
             Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
+
+            # Install dependencies
+            Write-Output "Installing dependencies..."
+
+            # Install VCLibs
+            Write-Output "Installing VCLibs..."
+            Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path $VCLibs_Path
+
+            # Install UI.Xaml
+            Write-Output "Installing UI.Xaml..."
+            Install-LibIfRequired -Lib_Name "*UI.Xaml*" -Lib_Path $UIXaml_Path
+
+            Write-Debug "Removing temporary files..."
+            TryRemove $VCLibs_Path
+            TryRemove $UIXaml_Path
         } catch {
             $errorHandled = Handle-Error $_
             if ($null -ne $errorHandled) {
@@ -1279,25 +1294,12 @@ try {
             Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
             Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
 
-            # Install everything
-            Write-Output "Installing winget and its dependencies..."
-
-            # Install VCLibs
-            Write-Output "Installing VCLibs..."
-            Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path $VCLibs_Path
-
-            # Install UI.Xaml
-            Write-Output "Installing UI.Xaml..."
-            Install-LibIfRequired -Lib_Name "*UI.Xaml*" -Lib_Path $UIXaml_Path
-
             # Install winget
             Write-Output "Installing winget..."
             Add-AppxProvisionedPackage -Online -PackagePath $winget_path -LicensePath $winget_license_path | Out-Null
 
             # Remove temporary files
             Write-Debug "Removing temporary files..."
-            TryRemove $VCLibs_Path
-            TryRemove $UIXaml_Path
             TryRemove $winget_path
             TryRemove $winget_license_path
         } catch {
