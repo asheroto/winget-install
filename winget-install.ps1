@@ -144,6 +144,35 @@ if ($PSBoundParameters.ContainsKey('Debug') -and $PSBoundParameters['Debug']) {
     $ConfirmPreference = 'None'
 }
 
+# Check if running as SYSTEM
+$RunAsSystem = $false
+if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name -match "NT AUTHORITY\\SYSTEM") {
+    Write-Debug "Running as SYSTEM"
+    $RunAsSystem = $true
+}
+
+# Find the WinGet Executable Loaction (For use when running in SYSTEM context)
+function Find-WinGet {
+    # Get the WinGet path
+    $WinGetPathToResolve = Join-Path -Path $ENV:ProgramFiles -ChildPath 'WindowsApps\Microsoft.DesktopAppInstaller_*_*__8wekyb3d8bbwe'
+    $ResolveWinGetPath = Resolve-Path -Path $WinGetPathToResolve | Sort-Object {
+        [version]($_.Path -replace '^[^\d]+_((\d+\.)*\d+)_.*', '$1')
+    }
+    if ($ResolveWinGetPath) {
+        # If we have multiple versions - use the latest.
+        $WinGetPath = $ResolveWinGetPath[-1].Path
+    }
+
+    $WinGet = Join-Path $WinGetPath 'winget.exe'
+
+    # Test if WinGet Executable exists
+    if (Test-Path -Path $WinGet) {
+        return $WinGet
+    } else {
+        return $null
+    }
+}
+
 function Get-OSInfo {
     <#
         .SYNOPSIS
@@ -436,7 +465,11 @@ function Get-WingetStatus {
     #>
 
     # Check if winget is installed
-    $winget = Get-Command -Name winget -ErrorAction SilentlyContinue
+    if ($RunAsSystem) {
+        $winget = & (Find-WinGet) -v
+    } else {
+        $winget = Get-Command -Name winget -ErrorAction SilentlyContinue
+    }
 
     # If winget is installed, return $true
     if ($null -ne $winget -and $winget -notlike '*failed to run*') {
@@ -778,7 +811,7 @@ function Set-PathPermissions {
     Grants full control permissions for the Administrators group on the specified directory path.
 
     .DESCRIPTION
-    This function sets full control permissions for the Administrators group on the specified directory path. 
+    This function sets full control permissions for the Administrators group on the specified directory path.
     Useful for ensuring that administrators have unrestricted access to a given folder.
 
     .PARAMETER FolderPath
@@ -922,7 +955,7 @@ function Install-NuGetIfRequired {
     Checks if the NuGet PackageProvider is installed and installs it if required.
 
     .DESCRIPTION
-    This function checks whether the NuGet PackageProvider is already installed on the system. If it is not found and the current PowerShell version is less than 7, it attempts to install the NuGet provider using Install-PackageProvider. 
+    This function checks whether the NuGet PackageProvider is already installed on the system. If it is not found and the current PowerShell version is less than 7, it attempts to install the NuGet provider using Install-PackageProvider.
     For PowerShell 7 or greater, it assumes NuGet is available by default and advises reinstallation if NuGet is missing.
 
     .PARAMETER Debug
@@ -1196,7 +1229,7 @@ try {
     # winget (regular method, Windows 10+)
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $AlternateInstallMethod -eq $false) {
+    if ($osVersion.NumericVersion -ne 2019 -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false) {
 
         Write-Section "winget"
 
@@ -1235,7 +1268,7 @@ try {
     #  Server 2019 or alternate install method only
     # ============================================================================ #
 
-    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -or $AlternateInstallMethod) {
+    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -or $AlternateInstallMethod -or $RunAsSystem) {
 
         # ============================================================================ #
         # Install dependencies
@@ -1378,7 +1411,7 @@ try {
     Write-Output "Registering winget..."
 
     # Register for all except Server 2019
-    if ($osVersion.NumericVersion -ne 2019) {
+    if ($osVersion.NumericVersion -ne 2019 -and $RunAsSystem -eq $false) {
         # Register winget
         Write-Debug "Registering winget..."
         Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
