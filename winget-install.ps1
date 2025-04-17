@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.7+
+.VERSION 5.0.9
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -59,6 +59,8 @@
 [Version 5.0.5] - Fixed exit code issue. Fixes #52.
 [Version 5.0.6] - Fixed installation issue on Server 2022 by changing installation method to same as Server 2019. Fixes #62.
 [Version 5.0.7] - Added the literal %LOCALAPPDATA% path to the user environment PATH to prevent issues when usernames or user profile paths change, or when using non-Latin characters. Fixes #45. Added support to catch Get-CimInstance errors, lately occuring in Windows Sandbox. Removed Server 2022 changes introduced in version 5.0.6. Register winget command in all OS versions except Server 2019. Fixes #57.
+[Version 5.0.8] - Fixed an issue on Server 2019 where the script failed if the dependency was already installed by adding library/dependency version check functionality. Fixes #61. Thank you to @MatthiasGuelck for the fix.
+[Version 5.0.9] - Improved script output. Fixed error messages caused when checking for an existing library/dependency version with multiple installed variants by choosing highest version number of the installed dependency.
 
 #>
 
@@ -90,7 +92,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.7+
+	Version      : 5.0.9
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -109,7 +111,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.7+'
+$CurrentVersion = '5.0.9'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -981,7 +983,9 @@ function Get-ManifestVersion {
         [Parameter(Mandatory)]
         [string]$Lib_Path
     )
+
     Write-Debug "Checking manifest version of $Lib_Path ..."
+
     # Load ZIP assembly to read the package contents
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [System.IO.Compression.ZipFile]::OpenRead($Lib_Path)
@@ -999,7 +1003,7 @@ function Get-ManifestVersion {
 
         # Output the version from the manifest
         $DownloadedLibVersion = $xml.Package.Identity.Version
-        Write-Debug "Downloaded Lib version: $DownloadedLibVersion"
+        Write-Debug "Downloaded library version: $DownloadedLibVersion"
     } else {
         Write-Error "AppxManifest.xml not found inside the file: $Lib_Path"
     }
@@ -1025,13 +1029,17 @@ function Get-InstalledLibVersion {
         [Parameter(Mandatory)]
         [string]$Lib_Name
     )
-    Write-Debug "Checking installed Lib version of $Lib_Name ..."
-    $InstalledLib = Get-AppxPackage -Name $Lib_Name -ErrorAction SilentlyContinue
+
+    Write-Debug "Checking installed library version of $Lib_Name ..."
+
+    # Get the highest version of the installed library
+    $InstalledLib = Get-AppxPackage -Name $Lib_Name -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1
+
     if ($InstalledLib) {
         $InstalledLibVersion = $InstalledLib.Version
-        Write-Debug "Installed Lib version: $InstalledLibVersion"
+        Write-Debug "Installed library version: $InstalledLibVersion"
     } else {
-        Write-Output "Lib is not installed."
+        Write-Output "Library is not installed."
         $InstalledLibVersion = $null
     }
 
@@ -1071,10 +1079,10 @@ function Install-LibIfRequired {
 
     # Compare versions and install if necessary
     if (!$InstalledLibVersion -or !$DownloadedLibVersion -or ($DownloadedLibVersion -gt $InstalledLibVersion)) {
-        Write-Output "Installing Lib..."
+        Write-Debug "Installing library version $DownloadedLibVersion ..."
         Add-AppxPackage -Path $Lib_Path
     } else {
-        Write-Output "Installed Lib version is up-to-date or newer. Skipping installation."
+        Write-Output "Installed library version is up-to-date or newer. Skipping installation."
     }
 }
 
@@ -1224,16 +1232,16 @@ try {
     }
 
     # ============================================================================ #
-    #  Server 2019 only
+    #  Server 2019 or alternate install method only
     # ============================================================================ #
 
     if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -or $AlternateInstallMethod) {
 
         # ============================================================================ #
-        # Install prerequisites
+        # Install dependencies
         # ============================================================================ #
 
-        Write-Section "Prerequisites"
+        Write-Section "Dependencies"
 
         try {
             # Download VCLibs
@@ -1243,19 +1251,19 @@ try {
             Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
             Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
 
+            # Install VCLibs
+            Write-Output "Installing VCLibs..."
+            Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path $VCLibs_Path
+
+            # Line break for readability
+            Write-Output ""
+
             # Download UI.Xaml
             $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.${arch}.appx"
             $UIXaml_Path = New-TemporaryFile2
             Write-Output "Downloading UI.Xaml..."
             Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path"
             Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
-
-            # Install dependencies
-            Write-Output "Installing dependencies..."
-
-            # Install VCLibs
-            Write-Output "Installing VCLibs..."
-            Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path $VCLibs_Path
 
             # Install UI.Xaml
             Write-Output "Installing UI.Xaml..."
@@ -1314,7 +1322,7 @@ try {
         # Visual C++ Redistributable
         # ============================================================================ #
 
-        Write-Section "Visual C++ Redistributable (Server 2019 only)"
+        Write-Section "Visual C++ Redistributable"
 
         # Test if Visual C++ Redistributable is not installed
         if (!(Test-VCRedistInstalled)) {
@@ -1346,8 +1354,8 @@ try {
         # Fix environment PATH and permissions
         # ============================================================================ #
 
-        # Fix permissions for winget folder (Server 2019 only)
-        Write-Output "Fixing permissions for winget folder (Server 2019 only)..."
+        # Fix permissions for winget folder
+        Write-Output "Fixing permissions for winget folder..."
 
         # Find winget folder path in Program Files
         $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
