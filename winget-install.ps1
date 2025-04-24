@@ -473,7 +473,12 @@ function Get-WingetStatus {
 
     # Check if winget is installed
     if ($RunAsSystem) {
-        $winget = & (Find-WinGet) -v
+        $wingetPath = Find-WinGet
+        if ($null -ne $wingetPath) {
+            $winget = & $wingetPath -v
+        } else {
+            $winget = $null
+        }
     } else {
         $winget = Get-Command -Name winget -ErrorAction SilentlyContinue
     }
