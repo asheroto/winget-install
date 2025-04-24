@@ -39,8 +39,7 @@
 
 ## Requirements
 
--   Requires PowerShell running with Administrator rights
-    -   WinGet does _not_ officially support installation or use of the [SYSTEM account](https://github.com/microsoft/winget-cli/discussions/962)
+-   Requires PowerShell running with Administrator privileges or execution under the SYSTEM context
 -   Compatible with:
     -   Windows 10 (Version 1809 or higher)
     -   Windows 11
@@ -60,6 +59,7 @@
 -   Supports irm/iex one-line command using short URL
 -   Supports automatically relaunching in `conhost` and ending active processes associated with WinGet that could interfere with the installation
 -   Code is hosted on [PowerShell Gallery](https://www.powershellgallery.com/packages/winget-install)
+-   Supports running under the SYSTEM context
 
 ## Script Functionality
 
@@ -212,7 +212,6 @@ winget-install
 -   Try [installing WinGet manually](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox) to see if the issue exists with WinGet itself.
 -   If the issue occurs when installing WinGet manually, please open an [issue on the WinGet-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script).
 -   Check the [WinGet-cli Troubleshooting Guide](https://github.com/microsoft/winget-cli/blob/master/doc/troubleshooting/README.md).
--   Note that WinGet [does not officially support](https://github.com/microsoft/winget-cli/discussions/962) installing or running with the `SYSTEM` account.
 -   If the problem **only** occurs when using this script, please open an issue here.
 
 ## Contributing
