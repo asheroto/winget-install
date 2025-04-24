@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.0.9
+.VERSION 5.1.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -61,6 +61,7 @@
 [Version 5.0.7] - Added the literal %LOCALAPPDATA% path to the user environment PATH to prevent issues when usernames or user profile paths change, or when using non-Latin characters. Fixes #45. Added support to catch Get-CimInstance errors, lately occuring in Windows Sandbox. Removed Server 2022 changes introduced in version 5.0.6. Register winget command in all OS versions except Server 2019. Fixes #57.
 [Version 5.0.8] - Fixed an issue on Server 2019 where the script failed if the dependency was already installed by adding library/dependency version check functionality. Fixes #61. Thank you to @MatthiasGuelck for the fix.
 [Version 5.0.9] - Improved script output. Fixed error messages caused when checking for an existing library/dependency version with multiple installed variants by choosing highest version number of the installed dependency.
+[Version 5.1.0] - Added support for installing winget under the SYSTEM context. Thanks to @GraphicHealer for the contribution.
 
 #>
 
@@ -92,7 +93,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.0.9
+	Version      : 5.1.0
 	Created by   : asheroto
 .LINK
 	Project Site: https://github.com/asheroto/winget-install
@@ -111,7 +112,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.0.9'
+$CurrentVersion = '5.1.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -151,24 +152,30 @@ if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name -match "NT AU
     $RunAsSystem = $true
 }
 
-# Find the WinGet Executable Loaction (For use when running in SYSTEM context)
+# Find the WinGet Executable Loaction (for use when running in SYSTEM context)
 function Find-WinGet {
-    # Get the WinGet path
-    $WinGetPathToResolve = Join-Path -Path $ENV:ProgramFiles -ChildPath 'WindowsApps\Microsoft.DesktopAppInstaller_*_*__8wekyb3d8bbwe'
-    $ResolveWinGetPath = Resolve-Path -Path $WinGetPathToResolve | Sort-Object {
-        [version]($_.Path -replace '^[^\d]+_((\d+\.)*\d+)_.*', '$1')
-    }
-    if ($ResolveWinGetPath) {
-        # If we have multiple versions - use the latest.
-        $WinGetPath = $ResolveWinGetPath[-1].Path
-    }
+    try {
+        # Get the WinGet path
+        $WinGetPathToResolve = Join-Path -Path $ENV:ProgramFiles -ChildPath 'WindowsApps\Microsoft.DesktopAppInstaller_*_*__8wekyb3d8bbwe'
+        $ResolveWinGetPath = Resolve-Path -Path $WinGetPathToResolve -ErrorAction Stop | Sort-Object {
+            [version]($_.Path -replace '^[^\d]+_((\d+\.)*\d+)_.*', '$1')
+        }
 
-    $WinGet = Join-Path $WinGetPath 'winget.exe'
+        if ($ResolveWinGetPath) {
+            # If we have multiple versions - use the latest.
+            $WinGetPath = $ResolveWinGetPath[-1].Path
+        }
 
-    # Test if WinGet Executable exists
-    if (Test-Path -Path $WinGet) {
-        return $WinGet
-    } else {
+        $WinGet = Join-Path $WinGetPath 'winget.exe'
+
+        # Test if WinGet Executable exists
+        if (Test-Path -Path $WinGet) {
+            return $WinGet
+        } else {
+            return $null
+        }
+    } catch {
+        Write-Debug "Could not resolve winget path: $($_.Exception.Message)"
         return $null
     }
 }
@@ -1436,6 +1443,10 @@ try {
     # Check if winget is installed
     if (Get-WingetStatus -eq $true) {
         Write-Output "winget is installed and working. You can go ahead and use it."
+        # If running as SYSTEM, inform the user a restart may be required for the winget command to work
+        if ($RunAsSystem) {
+            Write-Output "Since this script is running under the SYSTEM context, you may need to restart the computer or session for the winget command to function as expected."
+        }
     } else {
         # If winget is still not detected as a command, show warning
         Write-Debug "Get-WinGetStatus: $(Get-WingetStatus)"
