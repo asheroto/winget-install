@@ -39,7 +39,7 @@
 
 ## Requirements
 
--   Requires PowerShell running with Administrator privileges or execution under the SYSTEM context
+-   Requires PowerShell running with Administrator privileges - OR - execution under the SYSTEM context
 -   Compatible with:
     -   Windows 10 (Version 1809 or higher)
     -   Windows 11
