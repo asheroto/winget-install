@@ -203,11 +203,12 @@ winget-install
 
 ## Troubleshooting
 
--   Before releasing a new version, the script is tested on a clean install of Windows 10 22H2, Server 2022 21H2, and Windows 11 22H2.
+-   Before releasing a new version, the script is tested on a clean install of Windows 10, Server 2022, and Windows 11.
 -   If you run into an issue, please ensure your system is compatible & fully updated.
 -   Sometimes PowerShell closes the window before you can read the output. To prevent this, you can use the `-Wait` parameter to pause the script for a few seconds or the `-NoExit` parameter to keep the window open indefinitely. Improving script exit functionality is on our TODO list.
 -   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs.
 -   Try using the `-Debug` parameters to see if it provides any additional information.
+-   If winget is unable to run at some point in the future, or if you suspect an issue with the PATH environment variable, run the script again with the `-Force` parameter.
 -   If you're getting a `resource in use` error message, run the script again with the `-ForceClose` parameter.
 -   Try [installing WinGet manually](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox) to see if the issue exists with WinGet itself.
 -   If the issue occurs when installing WinGet manually, please open an [issue on the WinGet-cli repo](https://github.com/microsoft/winget-cli/issues) (unrelated to this script).
