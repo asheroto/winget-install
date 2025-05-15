@@ -203,7 +203,9 @@ winget-install
 
 ## Troubleshooting
 
--   Before releasing a new version, the script is tested on a clean install of Windows 10, Server 2022, and Windows 11.
+> [!NOTE]
+> Before releasing a new version, the script is tested on a clean install of Windows 10, Windows 11, Server 2019, Server 2022.
+
 -   If you run into an issue, please ensure your system is compatible & fully updated.
 -   Sometimes PowerShell closes the window before you can read the output. To prevent this, you can use the `-Wait` parameter to pause the script for a few seconds or the `-NoExit` parameter to keep the window open indefinitely. Improving script exit functionality is on our TODO list.
 -   Try running `winget-install` again, sometimes the script will fail due to a temporary issue with the prerequisite server URLs.
