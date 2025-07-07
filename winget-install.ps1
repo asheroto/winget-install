@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.1.0
+.VERSION 5.2.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -58,22 +58,23 @@
 [Version 5.0.4] - Fixed bug with UpdateSelf function. Fixed bug when installing that may cause NuGet prompt to not be suppressed. Introduced Install-NuGetIfRequired function.
 [Version 5.0.5] - Fixed exit code issue. Fixes #52.
 [Version 5.0.6] - Fixed installation issue on Server 2022 by changing installation method to same as Server 2019. Fixes #62.
-[Version 5.0.7] - Added the literal %LOCALAPPDATA% path to the user environment PATH to prevent issues when usernames or user profile paths change, or when using non-Latin characters. Fixes #45. Added support to catch Get-CimInstance errors, lately occuring in Windows Sandbox. Removed Server 2022 changes introduced in version 5.0.6. Register winget command in all OS versions except Server 2019. Fixes #57.
+[Version 5.0.7] - Added the literal %LOCALAPPDATA% path to the user environment PATH to prevent issues when usernames or user profile paths change, or when using non-Latin characters. Fixes #45. Added support to catch Get-CimInstance errors, lately occurring in Windows Sandbox. Removed Server 2022 changes introduced in version 5.0.6. Register winget command in all OS versions except Server 2019. Fixes #57.
 [Version 5.0.8] - Fixed an issue on Server 2019 where the script failed if the dependency was already installed by adding library/dependency version check functionality. Fixes #61. Thank you to @MatthiasGuelck for the fix.
 [Version 5.0.9] - Improved script output. Fixed error messages caused when checking for an existing library/dependency version with multiple installed variants by choosing highest version number of the installed dependency.
 [Version 5.1.0] - Added support for installing and using winget under the SYSTEM context. Thanks to @GraphicHealer for the contribution.
+[Version 5.2.0] - Added support for installing winget dependencies from winget-cli GitHub repository. Added fix for issue #66 and #65. Fixed version detection for winget dependencies. Thanks to @JonathanPitre for the contribution.
 
 #>
 
 <#
 .SYNOPSIS
-	Downloads and installs the latest version of winget and its dependencies.
+    Downloads and installs the latest version of winget and its dependencies.
 .DESCRIPTION
-	Downloads and installs the latest version of winget and its dependencies.
+    Downloads and installs the latest version of winget and its dependencies.
 
 This script is designed to be straightforward and easy to use, removing the hassle of manually downloading, installing, and configuring winget. This function should be run with administrative privileges.
 .EXAMPLE
-	winget-install
+    winget-install
 .PARAMETER Debug
     Enables debug mode, which shows additional information for debugging.
 .PARAMETER Force
@@ -93,10 +94,10 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-	Version      : 5.1.0
-	Created by   : asheroto
+    Version      : 5.2.0
+    Created by   : asheroto
 .LINK
-	Project Site: https://github.com/asheroto/winget-install
+    Project Site: https://github.com/asheroto/winget-install
 #>
 [CmdletBinding()]
 param (
@@ -112,7 +113,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.1.0'
+$CurrentVersion = '5.2.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -1029,13 +1030,13 @@ function Get-ManifestVersion {
         [string]$Lib_Path
     )
 
-    Write-Debug "Checking manifest version of $Lib_Path ..."
+    Write-Debug "Checking manifest version of $($Lib_Path)..."
 
     # Load ZIP assembly to read the package contents
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [System.IO.Compression.ZipFile]::OpenRead($Lib_Path)
 
-    Write-Debug "Reading AppxManifest.xml from $Lib_Path..."
+    Write-Debug "Reading AppxManifest.xml from $($Lib_Path)..."
     # Find and read the AppxManifest.xml
     $entry = $zip.Entries | Where-Object { $_.FullName -eq "AppxManifest.xml" }
 
@@ -1068,17 +1069,17 @@ function Get-InstalledLibVersion {
     The name of the library to check for installation and retrieve the version.
 
     .EXAMPLE
-    Get-InstalledLibVersion -Lib_Name "*VCLibs*"
+    Get-InstalledLibVersion -Lib_Name "VCLibs.140.00.UWPDesktop"
     #>
     param(
         [Parameter(Mandatory)]
         [string]$Lib_Name
     )
 
-    Write-Debug "Checking installed library version of $Lib_Name ..."
+    Write-Debug "Checking installed library version of $($Lib_Name)..."
 
     # Get the highest version of the installed library
-    $InstalledLib = Get-AppxPackage -Name $Lib_Name -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1
+    $InstalledLib = Get-AppxPackage -Name "*$($Lib_Name)*" -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1
 
     if ($InstalledLib) {
         $InstalledLibVersion = $InstalledLib.Version
@@ -1107,7 +1108,7 @@ function Install-LibIfRequired {
     The path to the library (ZIP) file containing the AppxManifest.xml.
 
     .EXAMPLE
-    Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path "C:\path\to\library.zip"
+    Install-LibIfRequired -Lib_Name "VCLibs.140.00.UWPDesktop" -Lib_Path "C:\path\to\library.zip"
     #>
     param(
         [Parameter(Mandatory)]
@@ -1124,8 +1125,15 @@ function Install-LibIfRequired {
 
     # Compare versions and install if necessary
     if (!$InstalledLibVersion -or !$DownloadedLibVersion -or ($DownloadedLibVersion -gt $InstalledLibVersion)) {
-        Write-Debug "Installing library version $DownloadedLibVersion ..."
-        Add-AppxPackage -Path $Lib_Path
+        if ($RunAsSystem) {
+            Write-Debug 'Running as system...'
+            Write-Debug "Installing library version $($DownloadedLibVersion)..."
+            $null = Add-ProvisionedAppxPackage -Online -SkipLicense -PackagePath $Lib_Path
+        } else {
+            Write-Debug 'Running as user...'
+            Write-Debug "Installing library version $($DownloadedLibVersion)..."
+            $null = Add-AppxPackage -Path $Lib_Path
+        }
     } else {
         Write-Output "Installed library version is up-to-date or newer. Skipping installation."
     }
@@ -1258,9 +1266,9 @@ try {
 
             Write-Output "Installing winget (this takes a minute or two)..."
             if ($Debug) {
-                try { Repair-WinGetPackageManager -AllUsers } catch { }
+                try { Repair-WinGetPackageManager -AllUsers -Force -Latest } catch { }
             } else {
-                try { Repair-WinGetPackageManager -AllUsers *>&1 | Out-Null } catch { }
+                try { Repair-WinGetPackageManager -AllUsers -Force -Latest *>&1 | Out-Null } catch { }
             }
         } catch {
             $errorHandled = Handle-Error $_
@@ -1289,32 +1297,51 @@ try {
         Write-Section "Dependencies"
 
         try {
-            # Download VCLibs
-            $VCLibs_Url = "https://aka.ms/Microsoft.VCLibs.${arch}.14.00.Desktop.appx"
-            $VCLibs_Path = New-TemporaryFile2
-            Write-Output "Downloading VCLibs..."
-            Write-Debug "Downloading VCLibs from $VCLibs_Url to $VCLibs_Path`n`n"
-            Invoke-WebRequest -Uri $VCLibs_Url -OutFile $VCLibs_Path
+            # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
+            $winget_dependencies_path = New-TemporaryFile2
+            $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
+            Write-Output 'Downloading winget dependencies...'
+            Write-Debug "Downloading winget dependencies from $winget_dependencies_url to $winget_dependencies_path`n`n"
+            Invoke-WebRequest -Uri $winget_dependencies_url -OutFile $winget_dependencies_path
 
-            # Install VCLibs
-            Write-Output "Installing VCLibs..."
-            Install-LibIfRequired -Lib_Name "*VCLibs*" -Lib_Path $VCLibs_Path
+            # Load ZIP assembly to read the package contents
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($winget_dependencies_path)
+
+            $matchingEntries = $zip.Entries | Where-Object { $_.FullName -match ".*$arch.appx" }
+            if ($matchingEntries) {
+                $matchingEntries | ForEach-Object {
+                    $destPath = Join-Path ([System.IO.Path]::GetTempPath()) $_.Name
+                    Write-Debug "Extracting $($_.FullName) to $destPath..."
+                    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($_, $destPath, $true)
+                    # Get the paths to the extracted files
+                    if ($_.Name -like '*.VCLibs.140.00.UWPDesktop*.appx') {
+                        $VCLibs_Path = $destPath
+                        Write-Debug "VCLibs_Path: $VCLibs_Path"
+                    }
+                    if ($_.Name -like '*.UI.Xaml.2.8*.appx') {
+                        $UIXaml_Path = $destPath
+                        Write-Debug "UIXaml_Path: $UIXaml_Path"
+                    }
+                }
+                $zip.Dispose()
+            } else {
+                Write-Error "Dependency not found inside the file: $winget_dependencies_path"
+            }
+
+            # Install VCLibs.140.00.UWPDesktop
+            Write-Output "Installing VCLibs.140.00.UWPDesktop..."
+            Install-LibIfRequired -Lib_Name 'VCLibs.140.00.UWPDesktop' -Lib_Path $VCLibs_Path
 
             # Line break for readability
             Write-Output ""
 
-            # Download UI.Xaml
-            $UIXaml_Url = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.${arch}.appx"
-            $UIXaml_Path = New-TemporaryFile2
-            Write-Output "Downloading UI.Xaml..."
-            Write-Debug "Downloading UI.Xaml from $UIXaml_Url to $UIXaml_Path"
-            Invoke-WebRequest -Uri $UIXaml_Url -OutFile $UIXaml_Path
-
-            # Install UI.Xaml
-            Write-Output "Installing UI.Xaml..."
-            Install-LibIfRequired -Lib_Name "*UI.Xaml*" -Lib_Path $UIXaml_Path
+            # Install UI.Xaml.2.8
+            Write-Output "Installing UI.Xaml.2.8..."
+            Install-LibIfRequired -Lib_Name 'UI.Xaml.2.8' -Lib_Path $UIXaml_Path
 
             Write-Debug "Removing temporary files..."
+            TryRemove $winget_dependencies_path
             TryRemove $VCLibs_Path
             TryRemove $UIXaml_Path
         } catch {
@@ -1342,7 +1369,7 @@ try {
 
             # Download winget
             $winget_path = New-TemporaryFile2
-            $winget_url = "https://aka.ms/getwinget"
+            $winget_url = Get-WingetDownloadUrl -Match 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle'
             Write-Output "Downloading winget..."
             Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
             Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
