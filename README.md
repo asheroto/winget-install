@@ -43,10 +43,11 @@
 -   Compatible with:
     -   Windows 10 (Version 1809 or higher)
     -   Windows 11
-    -   Server 2019/2022
+    -   Server 2019/2022/2025
     -   Windows Sandbox
 -   Not compatible with:
     -   Server 2016 or lower (WinGet not supported)
+    -   Server Core on any version (non desktop experience)
 
 ## Features
 
