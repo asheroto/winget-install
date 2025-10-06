@@ -148,7 +148,7 @@ if ($PSBoundParameters.ContainsKey('Debug') -and $PSBoundParameters['Debug']) {
 
 # Check if running as SYSTEM
 $RunAsSystem = $false
-if ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name -match "NT AUTHORITY\\SYSTEM") {
+if ([System.Security.Principal.WindowsIdentity]::GetCurrent().User -match "S-1-5-18") {
     Write-Debug "Running as SYSTEM"
     $RunAsSystem = $true
 }
