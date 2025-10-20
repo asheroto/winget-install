@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.2.0
+.VERSION 5.2.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -63,6 +63,7 @@
 [Version 5.0.9] - Improved script output. Fixed error messages caused when checking for an existing library/dependency version with multiple installed variants by choosing highest version number of the installed dependency.
 [Version 5.1.0] - Added support for installing and using winget under the SYSTEM context. Thanks to @GraphicHealer for the contribution.
 [Version 5.2.0] - Added support for installing winget dependencies from winget-cli GitHub repository. Added fix for issue #66 and #65. Fixed version detection for winget dependencies. Thanks to @JonathanPitre for the contribution.
+[Version 5.2.1] - Switched SYSTEM account specification to SID identifier to avoid issues in non-US locales. Added avoidance of pre-release versions and dynamically installing dependencies. Thanks to @langermi and @AAGITLTD for the contribution.
 
 #>
 
@@ -94,7 +95,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.2.0
+    Version      : 5.2.1
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -113,7 +114,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.2.0'
+$CurrentVersion = '5.2.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
