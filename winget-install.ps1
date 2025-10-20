@@ -1315,10 +1315,15 @@ try {
             New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
         }
 
-        # Download winget dependencies using standard logic
+        # ------------------------------------------------------------------------ #
+        # Download winget dependencies
+        # ------------------------------------------------------------------------ #
         $WingetDependenciesPath = New-TemporaryFile2
         $WingetDependenciesUrl = (Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' | Select-Object -First 1)
-        if (-not $WingetDependenciesUrl) { throw "Unable to locate DesktopAppInstaller_Dependencies.zip URL." }
+        if (-not $WingetDependenciesUrl) {
+            Write-Error "Unable to locate DesktopAppInstaller_Dependencies.zip URL."
+            ExitWithDelay 1
+        }
 
         Write-Output "Downloading winget dependencies from $WingetDependenciesUrl..."
         Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath -UseBasicParsing
@@ -1339,26 +1344,46 @@ try {
             }
             $Zip.Dispose()
         } else {
-            throw "Dependency not found inside the downloaded dependencies file: $WingetDependenciesPath"
+            Write-Error "Dependency not found inside the downloaded dependencies file: $WingetDependenciesPath"
+            ExitWithDelay 1
         }
 
-        # Download and extract the winget AppInstaller package
+        # ------------------------------------------------------------------------ #
+        # Download and extract AppInstaller (winget)
+        # ------------------------------------------------------------------------ #
         $WingetPackagePath = New-TemporaryFile2
-        $WingetPackageUrl = (Get-WingetDownloadUrl -Match 'AppInstaller_' | Select-Object -First 1)
-        if (-not $WingetPackageUrl) { throw "Unable to locate AppInstaller package URL." }
+        $ArchPattern = if ($Arch -eq "x64") { "AppInstaller_.*x64\.(msixbundle|msix)$" } else { "AppInstaller_.*(msixbundle|msix)$" }
+        $WingetPackageUrl = (Get-WingetDownloadUrl -Match $ArchPattern | Select-Object -First 1)
+        if (-not $WingetPackageUrl) {
+            Write-Error "Unable to locate AppInstaller package (.msixbundle or .msix)."
+            ExitWithDelay 1
+        }
 
         Write-Output "Downloading App Installer (winget) package from $WingetPackageUrl..."
         Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath -UseBasicParsing
 
+        if (-not (Test-Path $WingetPackagePath) -or ((Get-Item $WingetPackagePath).Length -lt 1MB)) {
+            Write-Error "Downloaded AppInstaller package is invalid or empty: $WingetPackagePath"
+            ExitWithDelay 1
+        }
+
         Write-Output "Extracting winget package directly to $PortableWingetDirectory..."
         Expand-Archive -Path $WingetPackagePath -DestinationPath $PortableWingetDirectory -Force
 
+        # ------------------------------------------------------------------------ #
         # Create required DLL symbolic link
+        # ------------------------------------------------------------------------ #
         $GlobalizationDll = Join-Path $PortableWingetDirectory "Windows.Globalization.dll"
         $UserProfileLink = Join-Path $PortableWingetDirectory "Windows.System.UserProfile.dll"
         if (-not (Test-Path $UserProfileLink)) {
             New-Item -ItemType SymbolicLink -Path $UserProfileLink -Target $GlobalizationDll -Force | Out-Null
         }
+
+        # ------------------------------------------------------------------------ #
+        # Cleanup temporary files
+        # ------------------------------------------------------------------------ #
+        TryRemove $WingetDependenciesPath
+        TryRemove $WingetPackagePath
 
         Write-Output "Portable winget installation completed successfully."
     }
