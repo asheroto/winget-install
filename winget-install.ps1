@@ -1301,7 +1301,13 @@ try {
     # ============================================================================ #
     # Detect Windows Server Core and perform portable install if applicable
     if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
+        Write-Output ""
         Write-Output "Detected Windows Server Core. Using portable winget installation method."
+
+        # ============================================================================ #
+        # Portable winget
+        # ============================================================================ #
+        Write-Section "Portable winget"
 
         $PortableWingetDirectory = Join-Path $env:ProgramFiles "Microsoft\winget"
         if (-not (Test-Path $PortableWingetDirectory)) {
@@ -1311,9 +1317,11 @@ try {
 
         # Download winget dependencies using standard logic
         $WingetDependenciesPath = New-TemporaryFile2
-        $WingetDependenciesUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
-        Write-Output 'Downloading winget dependencies...'
-        Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath
+        $WingetDependenciesUrl = (Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' | Select-Object -First 1)
+        if (-not $WingetDependenciesUrl) { throw "Unable to locate DesktopAppInstaller_Dependencies.zip URL." }
+
+        Write-Output "Downloading winget dependencies from $WingetDependenciesUrl..."
+        Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath -UseBasicParsing
 
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         $Zip = [System.IO.Compression.ZipFile]::OpenRead($WingetDependenciesPath)
@@ -1331,14 +1339,16 @@ try {
             }
             $Zip.Dispose()
         } else {
-            Write-Error "Dependency not found inside the file: $WingetDependenciesPath"
+            throw "Dependency not found inside the downloaded dependencies file: $WingetDependenciesPath"
         }
 
         # Download and extract the winget AppInstaller package
         $WingetPackagePath = New-TemporaryFile2
-        $WingetPackageUrl = Get-WingetDownloadUrl -Match 'AppInstaller_'
-        Write-Output 'Downloading App Installer (winget) package...'
-        Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath
+        $WingetPackageUrl = (Get-WingetDownloadUrl -Match 'AppInstaller_' | Select-Object -First 1)
+        if (-not $WingetPackageUrl) { throw "Unable to locate AppInstaller package URL." }
+
+        Write-Output "Downloading App Installer (winget) package from $WingetPackageUrl..."
+        Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath -UseBasicParsing
 
         Write-Output "Extracting winget package directly to $PortableWingetDirectory..."
         Expand-Archive -Path $WingetPackagePath -DestinationPath $PortableWingetDirectory -Force
@@ -1399,7 +1409,7 @@ try {
     if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -and $osVersion.InstallationType -ne "Server Core" -or $AlternateInstallMethod -or $RunAsSystem) {
 
         # ============================================================================ #
-        # Install dependencies
+        # Dependencies
         # ============================================================================ #
 
         Write-Section "Dependencies"
