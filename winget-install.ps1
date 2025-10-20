@@ -1297,7 +1297,7 @@ if ($ForceClose) {
 
 try {
     # ============================================================================ #
-    # Server Core Portable winget Installation (No AppX registration)
+    # Server Core Portable winget
     # ============================================================================ #
 
     if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
@@ -1313,6 +1313,21 @@ try {
         if ($arch -eq "x32") { $arch = "x86" }
 
         # ------------------------------------------------------------------------ #
+        # Helper function to expand ZIPs compatibly with .NET 4.x
+        # ------------------------------------------------------------------------ #
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        function Expand-ZipOverwrite {
+            param (
+                [Parameter(Mandatory = $true)][string]$Source,
+                [Parameter(Mandatory = $true)][string]$Destination
+            )
+            if (Test-Path $Destination) {
+                Remove-Item -Recurse -Force $Destination -ErrorAction SilentlyContinue
+            }
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($Source, $Destination)
+        }
+
+        # ------------------------------------------------------------------------ #
         # Download and extract dependencies
         # ------------------------------------------------------------------------ #
         Write-Section "Dependencies"
@@ -1322,7 +1337,6 @@ try {
         Write-Output "Downloading winget dependencies from $WingetDependenciesUrl..."
         Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath -UseBasicParsing
 
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
         $Zip = [System.IO.Compression.ZipFile]::OpenRead($WingetDependenciesPath)
 
         # Extract matching dependencies for current architecture (x64, arm64, etc.)
@@ -1342,13 +1356,12 @@ try {
         $Zip.Dispose()
 
         # Extract all appx contents into staging (no installation)
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
         $StagingDir = Join-Path $env:TEMP "winget_staging_$arch"
         if (-not (Test-Path $StagingDir)) { New-Item -ItemType Directory -Force -Path $StagingDir | Out-Null }
 
         foreach ($Appx in $ExtractedAppx) {
             Write-Output "Expanding $Appx..."
-            [System.IO.Compression.ZipFile]::ExtractToDirectory($Appx, $StagingDir, $true)
+            Expand-ZipOverwrite -Source $Appx -Destination $StagingDir
         }
 
         # ------------------------------------------------------------------------ #
@@ -1365,13 +1378,13 @@ try {
         Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath -UseBasicParsing
 
         $AppInstallerExtractDir = Join-Path $env:TEMP "winget_appinstaller_$arch"
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($WingetPackagePath, $AppInstallerExtractDir, $true)
+        Expand-ZipOverwrite -Source $WingetPackagePath -Destination $AppInstallerExtractDir
 
         # Extract nested msix if present
         $NestedMsix = Get-ChildItem -Path $AppInstallerExtractDir -Recurse -Include '*.msix' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($NestedMsix) {
             Write-Output "Extracting nested $($NestedMsix.Name)..."
-            [System.IO.Compression.ZipFile]::ExtractToDirectory($NestedMsix.FullName, $StagingDir, $true)
+            Expand-ZipOverwrite -Source $NestedMsix.FullName -Destination $StagingDir
         }
 
         # ------------------------------------------------------------------------ #
