@@ -445,7 +445,7 @@ function Get-WingetDownloadUrl {
 
     Write-Debug "Getting latest release..."
     foreach ($release in $releases) {
-        if ($release.name -match "preview") {
+        if ($release.name -match "preview" -or $release.prerelease) {
             continue
         }
         $data = $release.assets | Where-Object name -Match $Match
