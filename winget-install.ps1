@@ -1323,7 +1323,7 @@ try {
         # ------------------------------------------------------------------------ #
         Write-Output "Downloading required winget files..."
 
-        $Urls = Get-WingetDownloadUrl
+        $Urls = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
         $UrlXaml = ($Urls | Where-Object { $_ -match 'Microsoft\.UI\.Xaml' -and $_ -match '\.zip$' } | Select-Object -First 1)
         $UrlVCLibs = ($Urls | Where-Object { $_ -match 'VCLibs' -and $_ -match '\.appx$' } | Select-Object -First 1)
         $UrlAppInstaller = ($Urls | Where-Object { $_ -match '(AppInstaller|DesktopAppInstaller).*\.(msixbundle|msix)$' } | Select-Object -First 1)
