@@ -1297,7 +1297,7 @@ if ($ForceClose) {
 
 try {
     # ============================================================================ #
-    # Server Core Portable winget
+    # Server Core Portable winget Installation (No AppX registration)
     # ============================================================================ #
 
     if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
@@ -1312,15 +1312,9 @@ try {
         $arch = (Get-OSInfo).Architecture
         if ($arch -eq "x32") { $arch = "x86" }
 
-        # ------------------------------------------------------------------------ #
-        # Helper function to expand ZIPs compatibly with .NET 4.x
-        # ------------------------------------------------------------------------ #
+        # Helper – compatible ExtractToDirectory (no .NET 6 overloads)
         Add-Type -AssemblyName System.IO.Compression.FileSystem
-        function Expand-ZipOverwrite {
-            param (
-                [Parameter(Mandatory = $true)][string]$Source,
-                [Parameter(Mandatory = $true)][string]$Destination
-            )
+        function Expand-ZipOverwrite($Source, $Destination) {
             if (Test-Path $Destination) {
                 Remove-Item -Recurse -Force $Destination -ErrorAction SilentlyContinue
             }
@@ -1338,13 +1332,8 @@ try {
         Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath -UseBasicParsing
 
         $Zip = [System.IO.Compression.ZipFile]::OpenRead($WingetDependenciesPath)
-
-        # Extract matching dependencies for current architecture (x64, arm64, etc.)
         $MatchingEntries = $Zip.Entries | Where-Object { $_.FullName -match ".*$arch/.*\.appx$" }
-        if (-not $MatchingEntries) {
-            Write-Error "No matching dependencies found for $arch architecture."
-            ExitWithDelay 1
-        }
+        if (-not $MatchingEntries) { Write-Error "No matching dependencies found for $arch."; ExitWithDelay 1 }
 
         $ExtractedAppx = @()
         foreach ($Entry in $MatchingEntries) {
@@ -1355,13 +1344,13 @@ try {
         }
         $Zip.Dispose()
 
-        # Extract all appx contents into staging (no installation)
+        # Expand .appx contents
         $StagingDir = Join-Path $env:TEMP "winget_staging_$arch"
         if (-not (Test-Path $StagingDir)) { New-Item -ItemType Directory -Force -Path $StagingDir | Out-Null }
 
         foreach ($Appx in $ExtractedAppx) {
             Write-Output "Expanding $Appx..."
-            Expand-ZipOverwrite -Source $Appx -Destination $StagingDir
+            Expand-ZipOverwrite $Appx $StagingDir
         }
 
         # ------------------------------------------------------------------------ #
@@ -1369,29 +1358,24 @@ try {
         # ------------------------------------------------------------------------ #
         $WingetPackagePath = New-TemporaryFile2
         $WingetPackageUrl = (Get-WingetDownloadUrl -Match '(AppInstaller|DesktopAppInstaller).*\.(msixbundle|msix)$' | Select-Object -First 1)
-        if (-not $WingetPackageUrl) {
-            Write-Error "Unable to locate AppInstaller package (.msixbundle or .msix)."
-            ExitWithDelay 1
-        }
+        if (-not $WingetPackageUrl) { Write-Error "Unable to locate AppInstaller package."; ExitWithDelay 1 }
 
         Write-Output "Downloading App Installer (winget) package from $WingetPackageUrl..."
         Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath -UseBasicParsing
 
         $AppInstallerExtractDir = Join-Path $env:TEMP "winget_appinstaller_$arch"
-        Expand-ZipOverwrite -Source $WingetPackagePath -Destination $AppInstallerExtractDir
+        Expand-ZipOverwrite $WingetPackagePath $AppInstallerExtractDir
 
-        # Extract nested msix if present
         $NestedMsix = Get-ChildItem -Path $AppInstallerExtractDir -Recurse -Include '*.msix' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($NestedMsix) {
             Write-Output "Extracting nested $($NestedMsix.Name)..."
-            Expand-ZipOverwrite -Source $NestedMsix.FullName -Destination $StagingDir
+            Expand-ZipOverwrite $NestedMsix.FullName $StagingDir
         }
 
         # ------------------------------------------------------------------------ #
-        # Copy extracted files into final portable directory
+        # Copy extracted files to final portable directory
         # ------------------------------------------------------------------------ #
         Write-Output "Copying extracted files to $PortableWingetDirectory..."
-
         if (-not (Test-Path $PortableWingetDirectory)) {
             New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
         }
@@ -1399,9 +1383,7 @@ try {
         Get-ChildItem -Path $StagingDir -Recurse | ForEach-Object {
             $TargetPath = $_.FullName.Replace($StagingDir, $PortableWingetDirectory)
             if ($_.PSIsContainer) {
-                if (-not (Test-Path $TargetPath)) {
-                    New-Item -ItemType Directory -Force -Path $TargetPath | Out-Null
-                }
+                if (-not (Test-Path $TargetPath)) { New-Item -ItemType Directory -Force -Path $TargetPath | Out-Null }
             } else {
                 Copy-Item -Path $_.FullName -Destination $TargetPath -Force
             }
@@ -1420,6 +1402,7 @@ try {
         Remove-Item -LiteralPath $WingetDependenciesPath -Force
         Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
     }
+
 
     # ============================================================================ #
     # Install using the regular method, Windows 10+
