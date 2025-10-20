@@ -1403,7 +1403,6 @@ try {
         Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-
     # ============================================================================ #
     # Install using the regular method, Windows 10+
     # ============================================================================ #
