@@ -218,6 +218,7 @@ function Get-OSInfo {
         $displayVersionValue = $registryValues.DisplayVersion
         $nameValue = $registryValues.ProductName
         $editionIdValue = $registryValues.EditionId
+        $installationType = $registryValues.InstallationType
 
         # Strip out "Server" from the $editionIdValue if it exists
         $editionIdValue = $editionIdValue -replace "Server", ""
@@ -266,14 +267,15 @@ function Get-OSInfo {
 
         # Create and return custom object with the required properties
         $result = [PSCustomObject]@{
-            ReleaseId      = $releaseIdValue
-            DisplayVersion = $displayVersionValue
-            Name           = $nameValue
-            Type           = $typeValue
-            NumericVersion = $numericVersion
-            EditionId      = $editionIdValue
-            Version        = $versionValue
-            Architecture   = $architecture
+            ReleaseId        = $releaseIdValue
+            DisplayVersion   = $displayVersionValue
+            Name             = $nameValue
+            Type             = $typeValue
+            NumericVersion   = $numericVersion
+            EditionId        = $editionIdValue
+            InstallationType = $installationType
+            Version          = $versionValue
+            Architecture     = $architecture
         }
 
         return $result
@@ -1295,10 +1297,67 @@ if ($ForceClose) {
 
 try {
     # ============================================================================ #
-    # winget (regular method, Windows 10+)
+    # Server Core installation
+    # ============================================================================ #
+    # Detect Windows Server Core and perform portable install if applicable
+    if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
+        Write-Output "Detected Windows Server Core. Using portable winget installation method."
+
+        $PortableWingetDirectory = Join-Path $env:ProgramFiles "Microsoft\winget"
+        if (-not (Test-Path $PortableWingetDirectory)) {
+            Write-Output "Creating portable winget directory..."
+            New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
+        }
+
+        # Download winget dependencies using standard logic
+        $WingetDependenciesPath = New-TemporaryFile2
+        $WingetDependenciesUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
+        Write-Output 'Downloading winget dependencies...'
+        Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath
+
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $Zip = [System.IO.Compression.ZipFile]::OpenRead($WingetDependenciesPath)
+        $Arch = (Get-OSInfo).Architecture
+        $MatchingEntries = $Zip.Entries | Where-Object { $_.FullName -match ".*$Arch.appx" }
+
+        if ($MatchingEntries) {
+            foreach ($Entry in $MatchingEntries) {
+                $DestPath = Join-Path ([System.IO.Path]::GetTempPath()) $Entry.Name
+                [System.IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $DestPath, $true)
+                $AppName = Get-ManifestName $DestPath
+                Write-Output "Installing $AppName..."
+                Install-LibIfRequired -Lib_Name $AppName -Lib_Path $DestPath
+                TryRemove $DestPath
+            }
+            $Zip.Dispose()
+        } else {
+            Write-Error "Dependency not found inside the file: $WingetDependenciesPath"
+        }
+
+        # Download and extract the winget AppInstaller package
+        $WingetPackagePath = New-TemporaryFile2
+        $WingetPackageUrl = Get-WingetDownloadUrl -Match 'AppInstaller_'
+        Write-Output 'Downloading App Installer (winget) package...'
+        Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath
+
+        Write-Output "Extracting winget package directly to $PortableWingetDirectory..."
+        Expand-Archive -Path $WingetPackagePath -DestinationPath $PortableWingetDirectory -Force
+
+        # Create required DLL symbolic link
+        $GlobalizationDll = Join-Path $PortableWingetDirectory "Windows.Globalization.dll"
+        $UserProfileLink = Join-Path $PortableWingetDirectory "Windows.System.UserProfile.dll"
+        if (-not (Test-Path $UserProfileLink)) {
+            New-Item -ItemType SymbolicLink -Path $UserProfileLink -Target $GlobalizationDll -Force | Out-Null
+        }
+
+        Write-Output "Portable winget installation completed successfully."
+    }
+
+    # ============================================================================ #
+    # Install using the regular method, Windows 10+
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false) {
+    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false) {
 
         Write-Section "winget"
 
@@ -1337,7 +1396,7 @@ try {
     #  Server 2019 or alternate install method only
     # ============================================================================ #
 
-    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -or $AlternateInstallMethod -or $RunAsSystem) {
+    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -and $osVersion.InstallationType -ne "Server Core" -or $AlternateInstallMethod -or $RunAsSystem) {
 
         # ============================================================================ #
         # Install dependencies
@@ -1483,8 +1542,8 @@ try {
     # ============================================================================ #
     Write-Output "Registering winget..."
 
-    # Register for all except Server 2019
-    if ($osVersion.NumericVersion -ne 2019 -and $RunAsSystem -eq $false) {
+    # Register for all except Server 2019 and Server Core
+    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $RunAsSystem -eq $false -and $osVersion) {
         # Register winget
         Write-Debug "Registering winget..."
         Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
