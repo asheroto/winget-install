@@ -1297,12 +1297,12 @@ if ($ForceClose) {
 
 try {
     # ============================================================================ #
-    # Server Core installation
+    # Server Core Portable winget Installation (No AppX registration)
     # ============================================================================ #
-    # Detect Windows Server Core and perform portable install if applicable
+
     if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
         Write-Output ""
-        Write-Output "Detected Windows Server Core. Using portable winget installation method."
+        Write-Output "Detected Windows Server Core. Performing portable winget extraction."
 
         # ============================================================================ #
         # Portable winget
@@ -1310,72 +1310,82 @@ try {
         Write-Section "Portable winget"
 
         $PortableWingetDirectory = Join-Path $env:ProgramFiles "Microsoft\winget"
+
+        # Create random temporary directory
+        do {
+            $DownloadDirectory = Join-Path -Path $env:TEMP -ChildPath ('ensurewinget_' + [System.IO.Path]::GetRandomFileName())
+        } until (-not (Test-Path -Path $DownloadDirectory))
+        New-Item -ItemType Directory -Force -Path "$DownloadDirectory\dl" | Out-Null
+        New-Item -ItemType Directory -Force -Path "$DownloadDirectory\staging" | Out-Null
+
+        # ------------------------------------------------------------------------ #
+        # Download required packages
+        # ------------------------------------------------------------------------ #
+        Write-Output "Downloading required winget files..."
+
+        $Urls = Get-WingetDownloadUrl
+        $UrlXaml = ($Urls | Where-Object { $_ -match 'Microsoft\.UI\.Xaml' -and $_ -match '\.zip$' } | Select-Object -First 1)
+        $UrlVCLibs = ($Urls | Where-Object { $_ -match 'VCLibs' -and $_ -match '\.appx$' } | Select-Object -First 1)
+        $UrlAppInstaller = ($Urls | Where-Object { $_ -match '(AppInstaller|DesktopAppInstaller).*\.(msixbundle|msix)$' } | Select-Object -First 1)
+
+        if (-not $UrlXaml -or -not $UrlVCLibs -or -not $UrlAppInstaller) {
+            Write-Error "Unable to find one or more required winget package URLs."
+            ExitWithDelay 1
+        }
+
+        $PathXaml = Join-Path "$DownloadDirectory\dl" "Microsoft.UI.Xaml.zip"
+        $PathVCLibs = Join-Path "$DownloadDirectory\dl" "Microsoft.VCLibs.x64.14.00.Desktop.appx"
+        $PathAppInstaller = Join-Path "$DownloadDirectory\dl" "AppInstaller_x64.msixbundle"
+
+        Invoke-WebRequest -Uri $UrlXaml -OutFile $PathXaml -UseBasicParsing
+        Invoke-WebRequest -Uri $UrlVCLibs -OutFile $PathVCLibs -UseBasicParsing
+        Invoke-WebRequest -Uri $UrlAppInstaller -OutFile $PathAppInstaller -UseBasicParsing
+
+        # ------------------------------------------------------------------------ #
+        # Extraction logic
+        # ------------------------------------------------------------------------ #
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+        function Expand-Zip($Source, $Destination) {
+            if (-not (Test-Path $Destination)) { New-Item -ItemType Directory -Force -Path $Destination | Out-Null }
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($Source, $Destination)
+        }
+
+        Write-Output "Extracting XAML package..."
+        $XamlExtract = Join-Path "$DownloadDirectory\dl" "Microsoft.UI.Xaml"
+        Expand-Zip -Source $PathXaml -Destination $XamlExtract
+
+        Write-Output "Extracting AppInstaller bundle..."
+        $AppInstallerExtract = Join-Path "$DownloadDirectory\dl" "Microsoft.DesktopAppInstaller"
+        Expand-Zip -Source $PathAppInstaller -Destination $AppInstallerExtract
+
+        Write-Output "Extracting nested app packages into staging..."
+        Expand-Zip -Source (Join-Path $XamlExtract "tools\AppX\x64\Release\Microsoft.UI.Xaml.2.8.appx") -Destination "$DownloadDirectory\staging"
+        Expand-Zip -Source (Join-Path $AppInstallerExtract "AppInstaller_x64.msix") -Destination "$DownloadDirectory\staging"
+        Expand-Zip -Source $PathVCLibs -Destination "$DownloadDirectory\staging"
+
+        # ------------------------------------------------------------------------ #
+        # Copy extracted files into final portable directory
+        # ------------------------------------------------------------------------ #
+        Write-Output "Copying extracted files to $PortableWingetDirectory..."
+
         if (-not (Test-Path $PortableWingetDirectory)) {
-            Write-Output "Creating portable winget directory..."
             New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
         }
 
-        # ------------------------------------------------------------------------ #
-        # Download winget dependencies
-        # ------------------------------------------------------------------------ #
-        $WingetDependenciesPath = New-TemporaryFile2
-        $WingetDependenciesUrl = (Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' | Select-Object -First 1)
-        if (-not $WingetDependenciesUrl) {
-            Write-Error "Unable to locate DesktopAppInstaller_Dependencies.zip URL."
-            ExitWithDelay 1
-        }
-
-        Write-Output "Downloading winget dependencies from $WingetDependenciesUrl..."
-        Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath -UseBasicParsing
-
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
-        $Zip = [System.IO.Compression.ZipFile]::OpenRead($WingetDependenciesPath)
-        $Arch = (Get-OSInfo).Architecture
-        $MatchingEntries = $Zip.Entries | Where-Object { $_.FullName -match ".*$Arch.appx" }
-
-        if ($MatchingEntries) {
-            foreach ($Entry in $MatchingEntries) {
-                $DestPath = Join-Path ([System.IO.Path]::GetTempPath()) $Entry.Name
-                [System.IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $DestPath, $true)
-                $AppName = Get-ManifestName $DestPath
-                Write-Output "Installing $AppName..."
-                Install-LibIfRequired -Lib_Name $AppName -Lib_Path $DestPath
-                TryRemove $DestPath
+        Get-ChildItem -Path "$DownloadDirectory\staging" -Recurse | ForEach-Object {
+            $TargetPath = $_.FullName.Replace("$DownloadDirectory\staging", $PortableWingetDirectory)
+            if ($_.PSIsContainer) {
+                if (-not (Test-Path $TargetPath)) {
+                    New-Item -ItemType Directory -Force -Path $TargetPath | Out-Null
+                }
+            } else {
+                Copy-Item -Path $_.FullName -Destination $TargetPath -Force
             }
-            $Zip.Dispose()
-        } else {
-            Write-Error "Dependency not found inside the downloaded dependencies file: $WingetDependenciesPath"
-            ExitWithDelay 1
         }
 
         # ------------------------------------------------------------------------ #
-        # Download and extract AppInstaller (winget)
-        # ------------------------------------------------------------------------ #
-        $WingetPackagePath = New-TemporaryFile2
-        $ArchPattern = if ($Arch -eq "x64") {
-            "(AppInstaller|Microsoft\.DesktopAppInstaller_8wekyb3d8bbwe).*x64\.(msixbundle|msix)$"
-        } else {
-            "(AppInstaller|Microsoft\.DesktopAppInstaller_8wekyb3d8bbwe).*(msixbundle|msix)$"
-        }
-        $WingetPackageUrl = (Get-WingetDownloadUrl -Match $ArchPattern | Select-Object -First 1)
-        if (-not $WingetPackageUrl) {
-            Write-Error "Unable to locate AppInstaller package (.msixbundle or .msix)."
-            ExitWithDelay 1
-        }
-
-        Write-Output "Downloading App Installer (winget) package from $WingetPackageUrl..."
-        Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath -UseBasicParsing
-
-        if (-not (Test-Path $WingetPackagePath) -or ((Get-Item $WingetPackagePath).Length -lt 1MB)) {
-            Write-Error "Downloaded AppInstaller package is invalid or empty: $WingetPackagePath"
-            ExitWithDelay 1
-        }
-
-        Write-Output "Extracting winget package directly to $PortableWingetDirectory..."
-        Expand-Archive -Path $WingetPackagePath -DestinationPath $PortableWingetDirectory -Force
-
-        # ------------------------------------------------------------------------ #
-        # Create required DLL symbolic link
+        # Final link fix
         # ------------------------------------------------------------------------ #
         $GlobalizationDll = Join-Path $PortableWingetDirectory "Windows.Globalization.dll"
         $UserProfileLink = Join-Path $PortableWingetDirectory "Windows.System.UserProfile.dll"
@@ -1383,13 +1393,8 @@ try {
             New-Item -ItemType SymbolicLink -Path $UserProfileLink -Target $GlobalizationDll -Force | Out-Null
         }
 
-        # ------------------------------------------------------------------------ #
-        # Cleanup temporary files
-        # ------------------------------------------------------------------------ #
-        TryRemove $WingetDependenciesPath
-        TryRemove $WingetPackagePath
-
         Write-Output "Portable winget installation completed successfully."
+        Remove-Item -LiteralPath $DownloadDirectory -Recurse -Force
     }
 
     # ============================================================================ #
