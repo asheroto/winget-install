@@ -1352,7 +1352,11 @@ try {
         # Download and extract AppInstaller (winget)
         # ------------------------------------------------------------------------ #
         $WingetPackagePath = New-TemporaryFile2
-        $ArchPattern = if ($Arch -eq "x64") { "AppInstaller_.*x64\.(msixbundle|msix)$" } else { "AppInstaller_.*(msixbundle|msix)$" }
+        $ArchPattern = if ($Arch -eq "x64") {
+            "(AppInstaller|Microsoft\.DesktopAppInstaller_8wekyb3d8bbwe).*x64\.(msixbundle|msix)$"
+        } else {
+            "(AppInstaller|Microsoft\.DesktopAppInstaller_8wekyb3d8bbwe).*(msixbundle|msix)$"
+        }
         $WingetPackageUrl = (Get-WingetDownloadUrl -Match $ArchPattern | Select-Object -First 1)
         if (-not $WingetPackageUrl) {
             Write-Error "Unable to locate AppInstaller package (.msixbundle or .msix)."
