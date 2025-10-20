@@ -1333,16 +1333,16 @@ try {
             ExitWithDelay 1
         }
 
-        $PathXaml = Join-Path "$DownloadDirectory\dl" "Microsoft.UI.Xaml.zip"
-        $PathVCLibs = Join-Path "$DownloadDirectory\dl" "Microsoft.VCLibs.x64.14.00.Desktop.appx"
-        $PathAppInstaller = Join-Path "$DownloadDirectory\dl" "AppInstaller_x64.msixbundle"
+        $PathXaml = Join-Path "$DownloadDirectory\dl" ([System.IO.Path]::GetFileName($UrlXaml))
+        $PathVCLibs = Join-Path "$DownloadDirectory\dl" ([System.IO.Path]::GetFileName($UrlVCLibs))
+        $PathAppInstaller = Join-Path "$DownloadDirectory\dl" ([System.IO.Path]::GetFileName($UrlAppInstaller))
 
         Invoke-WebRequest -Uri $UrlXaml -OutFile $PathXaml -UseBasicParsing
         Invoke-WebRequest -Uri $UrlVCLibs -OutFile $PathVCLibs -UseBasicParsing
         Invoke-WebRequest -Uri $UrlAppInstaller -OutFile $PathAppInstaller -UseBasicParsing
 
         # ------------------------------------------------------------------------ #
-        # Extraction logic
+        # Extraction logic (dynamic file discovery)
         # ------------------------------------------------------------------------ #
         Add-Type -AssemblyName System.IO.Compression.FileSystem
 
@@ -1359,10 +1359,22 @@ try {
         $AppInstallerExtract = Join-Path "$DownloadDirectory\dl" "Microsoft.DesktopAppInstaller"
         Expand-Zip -Source $PathAppInstaller -Destination $AppInstallerExtract
 
+        Write-Output "Extracting VCLibs..."
+        $VCLibsExtract = Join-Path "$DownloadDirectory\dl" "Microsoft.VCLibs"
+        Expand-Zip -Source $PathVCLibs -Destination $VCLibsExtract
+
+        # Find and extract nested .appx and .msix dynamically
         Write-Output "Extracting nested app packages into staging..."
-        Expand-Zip -Source (Join-Path $XamlExtract "tools\AppX\x64\Release\Microsoft.UI.Xaml.2.8.appx") -Destination "$DownloadDirectory\staging"
-        Expand-Zip -Source (Join-Path $AppInstallerExtract "AppInstaller_x64.msix") -Destination "$DownloadDirectory\staging"
-        Expand-Zip -Source $PathVCLibs -Destination "$DownloadDirectory\staging"
+
+        $NestedPackages = @()
+        $NestedPackages += Get-ChildItem -Path $XamlExtract -Recurse -Filter "*.appx" -ErrorAction SilentlyContinue
+        $NestedPackages += Get-ChildItem -Path $AppInstallerExtract -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue
+        $NestedPackages += Get-ChildItem -Path $VCLibsExtract -Recurse -Filter "*.appx" -ErrorAction SilentlyContinue
+
+        foreach ($Pkg in $NestedPackages) {
+            Write-Output "Extracting $($Pkg.Name)..."
+            Expand-Zip -Source $Pkg.FullName -Destination "$DownloadDirectory\staging"
+        }
 
         # ------------------------------------------------------------------------ #
         # Copy extracted files into final portable directory
@@ -1393,7 +1405,7 @@ try {
             New-Item -ItemType SymbolicLink -Path $UserProfileLink -Target $GlobalizationDll -Force | Out-Null
         }
 
-        Write-Output "Portable winget installation completed successfully."
+        Write-Output "Portable winget extraction completed successfully."
         Remove-Item -LiteralPath $DownloadDirectory -Recurse -Force
     }
 
