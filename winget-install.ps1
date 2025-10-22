@@ -1373,19 +1373,29 @@ try {
         }
 
         # ------------------------------------------------------------------------ #
-        # Copy extracted files to final portable directory
+        # Copy extracted files into final portable directory
         # ------------------------------------------------------------------------ #
         Write-Output "Copying extracted files to $PortableWingetDirectory..."
+
         if (-not (Test-Path $PortableWingetDirectory)) {
             New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
         }
 
         Get-ChildItem -Path $StagingDir -Recurse | ForEach-Object {
             $TargetPath = $_.FullName.Replace($StagingDir, $PortableWingetDirectory)
+            # Skip if source and destination are the same
+            if ($_.FullName -ieq $TargetPath) { return }
+
             if ($_.PSIsContainer) {
-                if (-not (Test-Path $TargetPath)) { New-Item -ItemType Directory -Force -Path $TargetPath | Out-Null }
+                if (-not (Test-Path $TargetPath)) {
+                    New-Item -ItemType Directory -Force -Path $TargetPath | Out-Null
+                }
             } else {
-                Copy-Item -Path $_.FullName -Destination $TargetPath -Force
+                try {
+                    Copy-Item -Path $_.FullName -Destination $TargetPath -Force -ErrorAction Stop
+                } catch {
+                    Write-Warning "Skipping $($_.FullName): $($_.Exception.Message)"
+                }
             }
         }
 
@@ -1394,12 +1404,12 @@ try {
         # ------------------------------------------------------------------------ #
         $GlobalizationDll = Join-Path $PortableWingetDirectory "Windows.Globalization.dll"
         $UserProfileLink = Join-Path $PortableWingetDirectory "Windows.System.UserProfile.dll"
-        if (-not (Test-Path $UserProfileLink)) {
+        if (Test-Path $GlobalizationDll -and -not (Test-Path $UserProfileLink)) {
             New-Item -ItemType SymbolicLink -Path $UserProfileLink -Target $GlobalizationDll -Force | Out-Null
         }
 
         Write-Output "Portable winget extraction completed successfully."
-        Remove-Item -LiteralPath $WingetDependenciesPath -Force
+        Remove-Item -LiteralPath $WingetDependenciesPath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
