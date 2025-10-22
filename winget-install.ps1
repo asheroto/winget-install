@@ -1303,27 +1303,30 @@ try {
     if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
         Write-Output ""
         Write-Output "Detected Windows Server Core. Performing portable winget extraction."
-
         Write-Section "Portable winget"
 
         $PortableWingetDirectory = Join-Path $env:ProgramFiles "Microsoft\winget"
 
-        # Determine architecture
         $arch = (Get-OSInfo).Architecture
         if ($arch -eq "x32") { $arch = "x86" }
 
-        # Helper – compatible ExtractToDirectory (no .NET 6 overloads)
         Add-Type -AssemblyName System.IO.Compression.FileSystem
-        function Expand-ZipOverwrite($Source, $Destination) {
-            if (Test-Path $Destination) {
-                Remove-Item -Recurse -Force $Destination -ErrorAction SilentlyContinue
+
+        function Expand-ZipMerge {
+            param(
+                [Parameter(Mandatory = $true)][string]$Source,
+                [Parameter(Mandatory = $true)][string]$Destination
+            )
+            if (-not (Test-Path $Destination)) {
+                New-Item -ItemType Directory -Force -Path $Destination | Out-Null
             }
-            [System.IO.Compression.ZipFile]::ExtractToDirectory($Source, $Destination)
+            $tmp = Join-Path $env:TEMP ("zip_" + [guid]::NewGuid().ToString("N"))
+            New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($Source, $tmp)
+            Copy-Item -LiteralPath (Join-Path $tmp '*') -Destination $Destination -Recurse -Force
+            Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
         }
 
-        # ------------------------------------------------------------------------ #
-        # Download and extract dependencies
-        # ------------------------------------------------------------------------ #
         Write-Section "Dependencies"
 
         $WingetDependenciesPath = New-TemporaryFile2
@@ -1331,31 +1334,24 @@ try {
         Write-Output "Downloading winget dependencies from $WingetDependenciesUrl..."
         Invoke-WebRequest -Uri $WingetDependenciesUrl -OutFile $WingetDependenciesPath -UseBasicParsing
 
-        $Zip = [System.IO.Compression.ZipFile]::OpenRead($WingetDependenciesPath)
-        $MatchingEntries = $Zip.Entries | Where-Object { $_.FullName -match ".*$arch/.*\.appx$" }
-        if (-not $MatchingEntries) { Write-Error "No matching dependencies found for $arch."; ExitWithDelay 1 }
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($WingetDependenciesPath)
+        $matchingEntries = $zip.Entries | Where-Object { $_.FullName -match ".*$arch/.*\.appx$" }
+        if (-not $matchingEntries) { Write-Error "No matching dependencies found for $arch."; ExitWithDelay 1 }
 
-        $ExtractedAppx = @()
-        foreach ($Entry in $MatchingEntries) {
-            $DestPath = Join-Path ([System.IO.Path]::GetTempPath()) $Entry.Name
-            Write-Output "Extracting $($Entry.FullName) to $DestPath..."
-            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($Entry, $DestPath, $true)
-            $ExtractedAppx += $DestPath
+        $staging = Join-Path $env:TEMP ("winget_staging_" + $arch)
+        if (-not (Test-Path $staging)) { New-Item -ItemType Directory -Force -Path $staging | Out-Null }
+
+        foreach ($entry in $matchingEntries) {
+            $appxPath = Join-Path ([System.IO.Path]::GetTempPath()) $entry.Name
+            Write-Output "Extracting $($entry.FullName) to $appxPath..."
+            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $appxPath, $true)
+            Write-Output "Expanding $appxPath..."
+            Expand-ZipMerge -Source $appxPath -Destination $staging
+            Remove-Item -LiteralPath $appxPath -Force -ErrorAction SilentlyContinue
         }
-        $Zip.Dispose()
+        $zip.Dispose()
 
-        # Expand .appx contents
-        $StagingDir = Join-Path $env:TEMP "winget_staging_$arch"
-        if (-not (Test-Path $StagingDir)) { New-Item -ItemType Directory -Force -Path $StagingDir | Out-Null }
-
-        foreach ($Appx in $ExtractedAppx) {
-            Write-Output "Expanding $Appx..."
-            Expand-ZipOverwrite $Appx $StagingDir
-        }
-
-        # ------------------------------------------------------------------------ #
-        # Extract AppInstaller (winget) package itself
-        # ------------------------------------------------------------------------ #
+        # AppInstaller (winget)
         $WingetPackagePath = New-TemporaryFile2
         $WingetPackageUrl = (Get-WingetDownloadUrl -Match '(AppInstaller|DesktopAppInstaller).*\.(msixbundle|msix)$' | Select-Object -First 1)
         if (-not $WingetPackageUrl) { Write-Error "Unable to locate AppInstaller package."; ExitWithDelay 1 }
@@ -1363,59 +1359,41 @@ try {
         Write-Output "Downloading App Installer (winget) package from $WingetPackageUrl..."
         Invoke-WebRequest -Uri $WingetPackageUrl -OutFile $WingetPackagePath -UseBasicParsing
 
-        $AppInstallerExtractDir = Join-Path $env:TEMP "winget_appinstaller_$arch"
-        Expand-ZipOverwrite $WingetPackagePath $AppInstallerExtractDir
+        $bundleExtract = Join-Path $env:TEMP ("winget_bundle_" + $arch)
+        Expand-ZipMerge -Source $WingetPackagePath -Destination $bundleExtract
 
-        # Find and extract correct architecture msix (ignore stubs)
-        $NestedMsix = Get-ChildItem -Path $AppInstallerExtractDir -Recurse -Include '*.msix' -ErrorAction SilentlyContinue |
+        $nestedMsix = Get-ChildItem -Path $bundleExtract -Recurse -Include '*.msix' -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match $arch -and $_.Name -notmatch 'stub' } |
         Select-Object -First 1
 
-        if ($NestedMsix) {
-            Write-Output "Extracting nested $($NestedMsix.Name)..."
-            Expand-ZipOverwrite $NestedMsix.FullName $StagingDir
+        if ($nestedMsix) {
+            Write-Output "Extracting nested $($nestedMsix.Name)..."
+            Expand-ZipMerge -Source $nestedMsix.FullName -Destination $staging
         } else {
-            Write-Warning "No matching AppInstaller package found for $arch architecture."
+            Write-Warning "No matching AppInstaller .msix found for $arch."
         }
 
-        # ------------------------------------------------------------------------ #
-        # Copy extracted files into final portable directory
-        # ------------------------------------------------------------------------ #
+        # Copy to final portable directory (no path replace tricks)
         Write-Output "Copying extracted files to $PortableWingetDirectory..."
-
         if (-not (Test-Path $PortableWingetDirectory)) {
             New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
         }
+        Copy-Item -LiteralPath (Join-Path $staging '*') -Destination $PortableWingetDirectory -Recurse -Force
 
-        Get-ChildItem -Path $StagingDir -Recurse | ForEach-Object {
-            $TargetPath = $_.FullName.Replace($StagingDir, $PortableWingetDirectory)
-            if ($_.FullName -ieq $TargetPath) { return }
-
-            $TargetFolder = Split-Path $TargetPath -Parent
-            if (-not (Test-Path $TargetFolder)) {
-                New-Item -ItemType Directory -Force -Path $TargetFolder | Out-Null
-            }
-
-            try {
-                Copy-Item -LiteralPath $_.FullName -Destination $TargetPath -Force -ErrorAction Stop
-            } catch {
-                Write-Warning "Skipping $($_.FullName): $($_.Exception.Message)"
-            }
-        }
-
-        # ------------------------------------------------------------------------ #
         # Final link fix
-        # ------------------------------------------------------------------------ #
         $GlobalizationDll = Join-Path $PortableWingetDirectory "Windows.Globalization.dll"
         $UserProfileLink = Join-Path $PortableWingetDirectory "Windows.System.UserProfile.dll"
-
         if ((Test-Path $GlobalizationDll) -and (-not (Test-Path $UserProfileLink))) {
             New-Item -ItemType SymbolicLink -Path $UserProfileLink -Target $GlobalizationDll -Force | Out-Null
         }
 
         Write-Output "Portable winget extraction completed successfully."
         Remove-Item -LiteralPath $WingetDependenciesPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $StagingDir -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $WingetPackagePath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $bundleExtract -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
+
+        ExitWithDelay -Seconds 5
     }
 
     # ============================================================================ #
