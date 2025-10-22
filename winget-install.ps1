@@ -1193,7 +1193,7 @@ function Install-LibIfRequired {
 function Apply-PathPermissionsFixAndAddPath {
     param(
         [Parameter(Mandatory)]
-        [string]$Arch
+        [string]$OSVersion
     )
 
     # ============================================================================ #
@@ -1204,11 +1204,12 @@ function Apply-PathPermissionsFixAndAddPath {
     Write-Output "Fixing permissions for winget folder..."
 
     # Set winget folder path
-    if ($osVersion.InstallationType -ne "Server Core") {
+    if ($OSVersion.InstallationType -ne "Server Core") {
         # Set to portable path
         $WinGetFolderPath = Join-Path $env:ProgramFiles "Microsoft\winget"
     } else {
         # Find winget folder path in Program Files
+        $arch = $OSVersion.Architecture
         $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
     }
 
@@ -1468,7 +1469,7 @@ try {
         # ============================================================================ #
         # Apply path permissions and add path
         # ============================================================================ #
-        Apply-PathPermissionsFixAndAddPath -Arch $arch
+        Apply-PathPermissionsFixAndAddPath -OSVersion $osVersion
     }
 
     # ============================================================================ #
@@ -1635,7 +1636,7 @@ try {
         # ============================================================================ #
         # Fix environment PATH and permissions
         # ============================================================================ #
-        Apply-PathPermissionsFixAndAddPath -Arch $arch
+        Apply-PathPermissionsFixAndAddPath -OSVersion $osVersion
     }
 
     # ============================================================================ #
