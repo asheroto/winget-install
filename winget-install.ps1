@@ -1403,7 +1403,8 @@ try {
         # ------------------------------------------------------------------------ #
         $GlobalizationDll = Join-Path $PortableWingetDirectory "Windows.Globalization.dll"
         $UserProfileLink = Join-Path $PortableWingetDirectory "Windows.System.UserProfile.dll"
-        if (Test-Path $GlobalizationDll -and -not (Test-Path $UserProfileLink)) {
+
+        if ((Test-Path $GlobalizationDll) -and (-not (Test-Path $UserProfileLink))) {
             New-Item -ItemType SymbolicLink -Path $UserProfileLink -Target $GlobalizationDll -Force | Out-Null
         }
 
