@@ -1190,6 +1190,41 @@ function Install-LibIfRequired {
     }
 }
 
+function Apply-PathPermissionsFixAndAddPath {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Arch
+    )
+
+    # ============================================================================ #
+    # Fix environment PATH and permissions
+    # ============================================================================ #
+
+    # Fix permissions for winget folder
+    Write-Output "Fixing permissions for winget folder..."
+
+    # Set winget folder path
+    if ($osVersion.InstallationType -ne "Server Core") {
+        # Set to portable path
+        $WinGetFolderPath = Join-Path $env:ProgramFiles "Microsoft\winget"
+    } else {
+        # Find winget folder path in Program Files
+        $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
+    }
+
+    # Output
+    Write-Debug "WinGetFolderPath: $WinGetFolderPath"
+
+    if ($null -ne $WinGetFolderPath) {
+        # Fix Permissions by adding Administrators group with FullControl
+        Set-PathPermissions -FolderPath $WinGetFolderPath
+
+        # Add Environment Path
+        Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath -Scope 'System'
+    } else {
+        Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
+    }
+}
 
 # ============================================================================ #
 # Initial checks
@@ -1430,8 +1465,10 @@ try {
         Write-Output "Portable winget extraction completed successfully."
         Remove-Item -LiteralPath $BaseTemp -Recurse -Force -ErrorAction SilentlyContinue
 
-        ExitWithDelay -Seconds 5
-
+        # ============================================================================ #
+        # Apply path permissions and add path
+        # ============================================================================ #
+        Apply-PathPermissionsFixAndAddPath -Arch $arch
     }
 
     # ============================================================================ #
@@ -1470,7 +1507,6 @@ try {
         # Add to environment PATH to avoid issues when usernames or user profile paths change, or when using non-Latin characters (see #45)
         # Adding with literal %LOCALAPPDATA% to ensure it isn't resolved to the current user's LocalAppData as a fixed path
         Add-ToEnvironmentPath -PathToAdd "%LOCALAPPDATA%\Microsoft\WindowsApps" -Scope 'User'
-
     }
 
     # ============================================================================ #
@@ -1599,23 +1635,7 @@ try {
         # ============================================================================ #
         # Fix environment PATH and permissions
         # ============================================================================ #
-
-        # Fix permissions for winget folder
-        Write-Output "Fixing permissions for winget folder..."
-
-        # Find winget folder path in Program Files
-        $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
-        Write-Debug "WinGetFolderPath: $WinGetFolderPath"
-
-        if ($null -ne $WinGetFolderPath) {
-            # Fix Permissions by adding Administrators group with FullControl
-            Set-PathPermissions -FolderPath $WinGetFolderPath
-
-            # Add Environment Path
-            Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath -Scope 'System'
-        } else {
-            Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
-        }
+        Apply-PathPermissionsFixAndAddPath -Arch $arch
     }
 
     # ============================================================================ #
