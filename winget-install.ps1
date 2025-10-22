@@ -1381,21 +1381,20 @@ try {
             New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
         }
 
+        # Only copy when source and destination differ
         Get-ChildItem -Path $StagingDir -Recurse | ForEach-Object {
             $TargetPath = $_.FullName.Replace($StagingDir, $PortableWingetDirectory)
-            # Skip if source and destination are the same
             if ($_.FullName -ieq $TargetPath) { return }
 
-            if ($_.PSIsContainer) {
-                if (-not (Test-Path $TargetPath)) {
-                    New-Item -ItemType Directory -Force -Path $TargetPath | Out-Null
-                }
-            } else {
-                try {
-                    Copy-Item -Path $_.FullName -Destination $TargetPath -Force -ErrorAction Stop
-                } catch {
-                    Write-Warning "Skipping $($_.FullName): $($_.Exception.Message)"
-                }
+            $TargetFolder = Split-Path $TargetPath -Parent
+            if (-not (Test-Path $TargetFolder)) {
+                New-Item -ItemType Directory -Force -Path $TargetFolder | Out-Null
+            }
+
+            try {
+                Copy-Item -LiteralPath $_.FullName -Destination $TargetPath -Force -ErrorAction Stop
+            } catch {
+                Write-Warning "Skipping $($_.FullName): $($_.Exception.Message)"
             }
         }
 
