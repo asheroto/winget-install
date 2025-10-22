@@ -1366,10 +1366,16 @@ try {
         $AppInstallerExtractDir = Join-Path $env:TEMP "winget_appinstaller_$arch"
         Expand-ZipOverwrite $WingetPackagePath $AppInstallerExtractDir
 
-        $NestedMsix = Get-ChildItem -Path $AppInstallerExtractDir -Recurse -Include '*.msix' -ErrorAction SilentlyContinue | Select-Object -First 1
+        # Find and extract correct architecture msix (ignore stubs)
+        $NestedMsix = Get-ChildItem -Path $AppInstallerExtractDir -Recurse -Include '*.msix' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match $arch -and $_.Name -notmatch 'stub' } |
+        Select-Object -First 1
+
         if ($NestedMsix) {
             Write-Output "Extracting nested $($NestedMsix.Name)..."
             Expand-ZipOverwrite $NestedMsix.FullName $StagingDir
+        } else {
+            Write-Warning "No matching AppInstaller package found for $arch architecture."
         }
 
         # ------------------------------------------------------------------------ #
@@ -1381,7 +1387,6 @@ try {
             New-Item -ItemType Directory -Force -Path $PortableWingetDirectory | Out-Null
         }
 
-        # Only copy when source and destination differ
         Get-ChildItem -Path $StagingDir -Recurse | ForEach-Object {
             $TargetPath = $_.FullName.Replace($StagingDir, $PortableWingetDirectory)
             if ($_.FullName -ieq $TargetPath) { return }
