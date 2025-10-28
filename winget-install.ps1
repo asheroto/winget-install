@@ -458,7 +458,6 @@ function Get-WingetDownloadUrl {
     if ($data -and $data.browser_download_url) {
         return $data.browser_download_url
     } else {
-        Write-Warning "Could not get winget release '$WingetVersion'"
         throw "Could not get winget release '$WingetVersion'"
     }
 }
@@ -1393,7 +1392,13 @@ try {
         Write-Section "Dependencies"
 
         $DepsZip = Join-Path $BaseTemp "deps.zip"
-        $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+        try {
+            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+        }
+        catch {
+            # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
+            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
+        }
         Write-Output "Downloading dependencies from $DepsUrl..."
         Invoke-WebRequest -Uri $DepsUrl -OutFile $DepsZip -UseBasicParsing
 
@@ -1525,7 +1530,14 @@ try {
         try {
             # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
             $winget_dependencies_path = New-TemporaryFile2
-            $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+            try {
+                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+            }
+            catch {
+                # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
+                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
+            }
+
             Write-Output 'Downloading winget dependencies...'
             Write-Debug "Downloading winget dependencies from $winget_dependencies_url to $winget_dependencies_path`n`n"
             Invoke-WebRequest -Uri $winget_dependencies_url -OutFile $winget_dependencies_path
@@ -1573,7 +1585,13 @@ try {
 
             # Download winget license
             $winget_license_path = New-TemporaryFile2
-            $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -WingetVersion $WingetVersion
+            try {
+                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -WingetVersion $WingetVersion
+            }
+            catch {
+                # If we can't get the license XML of the exact version the user wants, fall back to try to find another version that has it
+                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" 
+            }
             Write-Output "Downloading winget license..."
             Write-Debug "Downloading winget license from $winget_license_url to $winget_license_path`n`n"
             Invoke-WebRequest -Uri $winget_license_url -OutFile $winget_license_path
