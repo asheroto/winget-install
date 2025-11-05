@@ -846,7 +846,12 @@ function Set-PathPermissions {
     $administratorsGroup = $administratorsGroupSid.Translate([System.Security.Principal.NTAccount])
 
     # Retrieve the current ACL for the folder
-    $acl = Get-Acl -Path $FolderPath
+    try {
+        $acl = Get-Acl -Path $FolderPath -ErrorAction Stop
+    } catch {
+        Write-Warning "Failed to retrieve ACL for '$FolderPath'. Error: $($_.Exception.Message)"
+        return
+    }
 
     # Define the access rule for full control inheritance
     $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
@@ -858,8 +863,12 @@ function Set-PathPermissions {
     )
 
     # Apply the access rule to the ACL and set it on the folder
-    $acl.SetAccessRule($accessRule)
-    Set-Acl -Path $FolderPath -AclObject $acl
+    try {
+        $acl.SetAccessRule($accessRule)
+        Set-Acl -Path $FolderPath -AclObject $acl -ErrorAction Stop
+    } catch {
+        Write-Warning "Failed to apply ACL to '$FolderPath'. Error: $($_.Exception.Message)"
+    }
 }
 
 function Test-VCRedistInstalled {
@@ -1222,9 +1231,15 @@ function Apply-PathPermissionsFixAndAddPath {
 
         # Add Environment Path
         Add-ToEnvironmentPath -PathToAdd $WinGetFolderPath -Scope 'System'
+
+        Write-Output "winget folder permissions and PATH updated successfully."
+        Write-Output "A restart or new session may be required for changes to take effect."
     } else {
         Write-Warning "winget folder path not found. You may need to manually add winget's folder path to your system PATH environment variable."
     }
+
+    # Output
+    Write-Output "A restart may be required for winget path to continue to work as expected."
 }
 
 # ============================================================================ #
