@@ -47,7 +47,7 @@
     -   Windows 11
     -   Server 2019/2022/2025
     -   Windows Sandbox
-    -   Server Core (non desktop experience) - still under beta testing, see #53 for details
+    -   Server Core (non desktop experience) - still under beta testing, see [issue #53](https://github.com/asheroto/winget-install/issues/53) for details
 -   Not compatible with:
     -   Server 2016 or lower (WinGet not supported)
 
