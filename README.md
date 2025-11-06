@@ -14,8 +14,10 @@
 **WinGet, a command line package manager, doesn't have a command line installer? 🤣 Now it does! 😊**
 
 > [!NOTE]  
-> **What's New?**
-> - Addded `-AlternateInstallMethod` optional parameter to force previous method of installation before use of `Repair-WinGetPackageManager`.
+> **What's New**
+> - Added support for GitHub API tokens (`-GHtoken`) to improve reliability when checking for the latest WinGet version or when encountering GitHub API rate limits.  
+> - Added the ability to specify a specific WinGet version using `-WingetVersion`.  
+>   *Note: This only works when using `-AlternateInstallMethod` (the default method for Windows Server 2019).*
 
 ## Table of Contents
 
@@ -45,9 +47,9 @@
     -   Windows 11
     -   Server 2019/2022/2025
     -   Windows Sandbox
+    -   Server Core (on desktop experience) - still under beta testing, see #53 for details
 -   Not compatible with:
     -   Server 2016 or lower (WinGet not supported)
-    -   Server Core on any version (non desktop experience)
 
 ## Features
 
@@ -172,6 +174,8 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 | `-Force`                  | Ensures the installation of WinGet and its dependencies, even if they are already present.                                                                                                                                                                    |
 | `-ForceClose`             | If Windows Terminal has trouble installing WinGet, use this parameter to relaunch the script in conhost.exe and automatically end any active processes associated with WinGet that could interfere with the installation.                                     |
 | `-AlternateInstallMethod` | Alternate installation method if primary installation method fails.                                                                                                                                                                                           |
+| `-WingetVersion`          | Specifies a particular version of WinGet to install. Only supported when using `-AlternateInstallMethod`; otherwise, the latest version will always be installed.                                                                                             |
+| `-GHtoken`                | Optional GitHub API token to increase API rate limits or access private repositories when downloading WinGet releases.                                                                                                                                        |
 | `-CheckForUpdate`         | Checks if there is an update available for the script.                                                                                                                                                                                                        |
 | `-Wait`                   | By default, the script exits immediately after completion. Although this is not supposed to close the PowerShell window, sometimes it still occurs. Use this parameter to pause the script for several seconds before exiting to observe the output.          |
 | `-NoExit`                 | By default, the script exits immediately after completion. Although this is not supposed to close the PowerShell window, sometimes it still occurs. Use this parameter to pause the script indefinitely after execution; pressing Enter will exit the script. |
