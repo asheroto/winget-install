@@ -460,25 +460,28 @@ function Get-WingetDownloadUrl {
         [string]$GHtoken
     )
 
-    if ($GHtoken) {
-        $headers = @{
-            'Authorization' = "Bearer $GHtoken"
-        }
-    }
-    if ($WingetVersion -eq '' -or $WingetVersion -eq 'latest') {
-        $latestStable = @(Invoke-RestMethod 'https://api.github.com/repos/microsoft/winget-cli/releases/latest' -Headers $headers -UseBasicParsing -ErrorAction Stop)[0]
-        $uri = "https://api.github.com/repos/microsoft/winget-cli/releases/tags/$($latestStable.tag_name)"
+    if ([string]::IsNullOrWhiteSpace($WingetVersion) -or $WingetVersion -eq 'latest') {
+        Write-Debug "Downloading latest winget"
+        $latestStable = Invoke-RestMethod 'https://api.github.com/repos/microsoft/winget-cli/releases/latest' -UseBasicParsing
+        $tag = $latestStable.tag_name
     } else {
-        $uri = "https://api.github.com/repos/microsoft/winget-cli/releases/tags/$WingetVersion"
+        Write-Debug "Downloading version $WingetVersion"
+        $tag = $WingetVersion
     }
 
-    $release = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -ErrorAction Stop
+    if ($tag -notmatch '^v') {
+        $tag = "v$tag"
+    }
 
-    $data = $release | Select-Object -ExpandProperty assets | Where-Object name -Match $Match
-    if ($data -and $data.browser_download_url) {
-        return $data.browser_download_url
+    $uri = "https://api.github.com/repos/microsoft/winget-cli/releases/tags/$tag"
+    $release = Invoke-RestMethod -Uri $uri -ErrorAction Stop
+
+    $data = $release.assets | Where-Object { $_.name -match $Match } | Select-Object -First 1
+
+    if ($null -ne $data -and $null -ne $data.browser_download_url) {
+        return [string]$data.browser_download_url
     } else {
-        throw "Could not get winget release '$WingetVersion'"
+        throw "Could not get winget release '$tag' or no asset matched '$Match'"
     }
 }
 
@@ -1429,14 +1432,19 @@ try {
 
         $DepsZip = Join-Path $BaseTemp "deps.zip"
         try {
-            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion -GHtoken $GHtoken
-        }
-        catch {
+            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+        } catch {
             # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
             $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -GHtoken $GHtoken
         }
+
+        # Ensure single URL string
+        if ($DepsUrl -is [array]) {
+            $DepsUrl = $DepsUrl | Select-Object -First 1
+        }
+
         Write-Output "Downloading dependencies from $DepsUrl..."
-        Invoke-WebRequest -Uri $DepsUrl -OutFile $DepsZip -UseBasicParsing
+        Invoke-WebRequest -Uri ([string]$DepsUrl) -OutFile $DepsZip -UseBasicParsing
 
         $Zip = [System.IO.Compression.ZipFile]::OpenRead($DepsZip)
         $Entries = $Zip.Entries | Where-Object { $_.FullName -match "$arch/.*\.appx$" }
@@ -1517,7 +1525,7 @@ try {
     # Install using the regular method, Windows 10+
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false) {
+    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false -and $WingetVersion -eq 'latest') {
 
         Write-Section "winget"
 
@@ -1555,7 +1563,7 @@ try {
     #  Server 2019 or alternate install method only
     # ============================================================================ #
 
-    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -and $osVersion.InstallationType -ne "Server Core" -or $AlternateInstallMethod -or $RunAsSystem) {
+    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -and $osVersion.InstallationType -ne "Server Core" -or $AlternateInstallMethod -or $RunAsSystem -or $WingetVersion -ne 'latest') {
 
         # ============================================================================ #
         # Dependencies
@@ -1568,9 +1576,8 @@ try {
             # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
             $winget_dependencies_path = New-TemporaryFile2
             try {
-                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion -GHtoken $GHtoken
-            }
-            catch {
+                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+            } catch {
                 # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
                 $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -GHtoken $GHtoken
             }
@@ -1623,9 +1630,8 @@ try {
             # Download winget license
             $winget_license_path = New-TemporaryFile2
             try {
-                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -WingetVersion $WingetVersion -GHtoken $GHtoken
-            }
-            catch {
+                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -WingetVersion $WingetVersion
+            } catch {
                 # If we can't get the license XML of the exact version the user wants, fall back to try to find another version that has it
                 $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -GHtoken $GHtoken
             }
