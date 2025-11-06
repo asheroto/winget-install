@@ -91,6 +91,8 @@ This script is designed to be straightforward and easy to use, removing the hass
     Updates the script to the latest version on PSGallery.
 .PARAMETER CheckForUpdate
     Checks if there is an update available for the script.
+.PARAMETER GHtoken
+    The GitHub token to access to the GitHub API with higher rate limit.
 .PARAMETER Version
     Displays the version of the script.
 .PARAMETER Help
@@ -111,6 +113,7 @@ param (
     [string]$WingetVersion = 'latest',
     [switch]$NoExit,
     [switch]$UpdateSelf,
+    [string]$GHtoken,
     [switch]$Version,
     [switch]$Help
 )
@@ -301,6 +304,9 @@ function Get-GitHubRelease {
         .PARAMETER Repo
         The name of the repository.
 
+        .PARAMETER GHtoken
+        The GitHub token to access to the GitHub API with higher rate limit.
+
         .EXAMPLE
         Get-GitHubRelease -Owner "asheroto" -Repo "winget-install"
         This command retrieves the latest release version and published datetime of the winget-install repository owned by asheroto.
@@ -308,11 +314,17 @@ function Get-GitHubRelease {
     [CmdletBinding()]
     param (
         [string]$Owner,
-        [string]$Repo
+        [string]$Repo,
+        [string]$GHtoken
     )
     try {
         $url = "https://api.github.com/repos/$Owner/$Repo/releases/latest"
-        $response = Invoke-RestMethod -Uri $url -ErrorAction Stop
+        if ($GHtoken) {
+            $headers = @{
+                'Authorization' = "Bearer $GHtoken"
+            }
+        }
+        $response = Invoke-RestMethod -Uri $url -Headers $headers -ErrorAction Stop
 
         $latestVersion = $response.tag_name
         $publishedAt = $response.published_at
@@ -336,10 +348,11 @@ function CheckForUpdate {
         [string]$RepoOwner,
         [string]$RepoName,
         [version]$CurrentVersion,
-        [string]$PowerShellGalleryName
+        [string]$PowerShellGalleryName,
+        [string]$GHtoken
     )
 
-    $Data = Get-GitHubRelease -Owner $RepoOwner -Repo $RepoName
+    $Data = Get-GitHubRelease -Owner $RepoOwner -Repo $RepoName -GHtoken $GHtoken
 
     Write-Output ""
     Write-Output ("Repository:       {0,-40}" -f "https://github.com/$RepoOwner/$RepoName")
@@ -443,7 +456,8 @@ function Get-WingetDownloadUrl {
     param (
         [Parameter(Mandatory = $true)]
         [string]$Match,
-        [string]$WingetVersion = 'latest'
+        [string]$WingetVersion = 'latest',
+        [string]$GHtoken
     )
 
     if ([string]::IsNullOrWhiteSpace($WingetVersion) -or $WingetVersion -eq 'latest') {
@@ -1221,13 +1235,13 @@ function Apply-PathPermissionsFixAndAddPath {
     Write-Output "Fixing permissions for winget folder..."
 
     # Set winget folder path
-    if ($OSVersion.InstallationType -ne "Server Core") {
+    if ($OSVersion.InstallationType -eq "Server Core") {
         # Set to portable path
         $WinGetFolderPath = Join-Path $env:ProgramFiles "Microsoft\winget"
     } else {
         # Find winget folder path in Program Files
         $arch = $OSVersion.Architecture
-        $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
+        $WinGetFolderPath = (Get-ChildItem -Path ([System.IO.Path]::Combine($env:ProgramFiles, 'WindowsApps')) -Filter "Microsoft.DesktopAppInstaller_*_*${arch}__8wekyb3d8bbwe" | Sort-Object Name | Select-Object -Last 1).FullName
     }
 
     # Output
@@ -1414,13 +1428,14 @@ try {
         # Dependencies
         # ------------------------------------------------------------------------ #
         Write-Section "Dependencies"
+        Write-Verbose "GHtoken=$GHtoken"
 
         $DepsZip = Join-Path $BaseTemp "deps.zip"
         try {
             $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
         } catch {
             # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
-            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
+            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -GHtoken $GHtoken
         }
 
         # Ensure single URL string
@@ -1452,7 +1467,7 @@ try {
         # AppInstaller (winget)
         # ------------------------------------------------------------------------ #
         $WingetPkg = Join-Path $BaseTemp "appinstaller.msixbundle"
-        $WingetUrl = Get-WingetDownloadUrl -Match '(AppInstaller|DesktopAppInstaller).*\.(msixbundle|msix)$' -WingetVersion $WingetVersion | Select-Object -First 1
+        $WingetUrl = Get-WingetDownloadUrl -Match '(AppInstaller|DesktopAppInstaller).*\.(msixbundle|msix)$' -WingetVersion $WingetVersion -GHtoken $GHtoken | Select-Object -First 1
         if (-not $WingetUrl) { Write-Error "No AppInstaller package found."; ExitWithDelay 1 }
 
         Write-Output "Downloading AppInstaller package from $WingetUrl..."
@@ -1555,6 +1570,7 @@ try {
         # ============================================================================ #
 
         Write-Section "Dependencies"
+        Write-Verbose "GHtoken=$GHtoken"
 
         try {
             # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
@@ -1563,7 +1579,7 @@ try {
                 $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
             } catch {
                 # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
-                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip'
+                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -GHtoken $GHtoken
             }
 
             Write-Output 'Downloading winget dependencies...'
@@ -1617,7 +1633,7 @@ try {
                 $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -WingetVersion $WingetVersion
             } catch {
                 # If we can't get the license XML of the exact version the user wants, fall back to try to find another version that has it
-                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" 
+                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -GHtoken $GHtoken
             }
             Write-Output "Downloading winget license..."
             Write-Debug "Downloading winget license from $winget_license_url to $winget_license_path`n`n"
@@ -1625,7 +1641,7 @@ try {
 
             # Download winget
             $winget_path = New-TemporaryFile2
-            $winget_url = Get-WingetDownloadUrl -Match 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' -WingetVersion $WingetVersion
+            $winget_url = Get-WingetDownloadUrl -Match 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' -WingetVersion $WingetVersion -GHtoken $GHtoken
             Write-Output "Downloading winget..."
             Write-Debug "Downloading winget from $winget_url to $winget_path`n`n"
             Invoke-WebRequest -Uri $winget_url -OutFile $winget_path
