@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.3.0
+.VERSION 5.3.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -65,6 +65,7 @@
 [Version 5.2.0] - Added support for installing winget dependencies from winget-cli GitHub repository. Added fix for issue #66 and #65. Fixed version detection for winget dependencies. Thanks to @JonathanPitre for the contribution.
 [Version 5.2.1] - Switched SYSTEM account specification to SID identifier to avoid issues in non-US locales. Added avoidance of pre-release versions and dynamically installing dependencies. Thanks to @langermi and @AAGITLTD for the contribution.
 [Version 5.3.0] - Added support for installing specific version of winget. Added try/catch to prevent errors when getting/setting ACLs. Thank you @jantari for the contribution.
+[Version 5.3.1] - Fixed glitch with Get-WinGetFolderPath. Improved detection of Winget version number if specified. Added support for GitHub API token. Thank you @m41kc0d3 for the contribution.
 
 #>
 
@@ -98,7 +99,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.3.0
+    Version      : 5.3.1
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -119,7 +120,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.3.0'
+$CurrentVersion = '5.3.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -460,12 +461,18 @@ function Get-WingetDownloadUrl {
         [string]$GHtoken
     )
 
+    # Always initialize headers to avoid null argument errors
+    $headers = @{}
+    if (-not [string]::IsNullOrWhiteSpace($GHtoken)) {
+        $headers['Authorization'] = "Bearer $GHtoken"
+    }
+
     if ([string]::IsNullOrWhiteSpace($WingetVersion) -or $WingetVersion -eq 'latest') {
-        Write-Debug "Downloading latest winget"
-        $latestStable = Invoke-RestMethod 'https://api.github.com/repos/microsoft/winget-cli/releases/latest' -UseBasicParsing
+        Write-Debug "Retrieving latest winget release info..."
+        $latestStable = Invoke-RestMethod 'https://api.github.com/repos/microsoft/winget-cli/releases/latest' -Headers $headers -ErrorAction Stop
         $tag = $latestStable.tag_name
     } else {
-        Write-Debug "Downloading version $WingetVersion"
+        Write-Debug "Retrieving winget version $WingetVersion..."
         $tag = $WingetVersion
     }
 
@@ -474,11 +481,14 @@ function Get-WingetDownloadUrl {
     }
 
     $uri = "https://api.github.com/repos/microsoft/winget-cli/releases/tags/$tag"
-    $release = Invoke-RestMethod -Uri $uri -ErrorAction Stop
+    Write-Debug "Fetching release data from $uri"
+    $release = Invoke-RestMethod -Uri $uri -Headers $headers -ErrorAction Stop
 
     $data = $release.assets | Where-Object { $_.name -match $Match } | Select-Object -First 1
 
     if ($null -ne $data -and $null -ne $data.browser_download_url) {
+        Write-Debug "Found asset: $($data.name)"
+        Write-Debug "Download URL: $($data.browser_download_url)"
         return [string]$data.browser_download_url
     } else {
         throw "Could not get winget release '$tag' or no asset matched '$Match'"
@@ -1525,27 +1535,25 @@ try {
     # Install using the regular method, Windows 10+
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false -and $WingetVersion -eq 'latest') {
+    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false) {
 
         Write-Section "winget"
+
+        # If WingetVersion is specified, warn user it only works when using the -AlternateInstallMethod.
+        if ($WingetVersion -ne 'latest') {
+            Write-Warning "The -WingetVersion parameter is ignored when not using -AlternateInstallMethod. The standard install method always installs the latest version."
+        }
 
         try {
             Write-Debug "Checking if NuGet PackageProvider is already installed..."
             Install-NuGetIfRequired
 
-            Write-Output "Installing Microsoft.WinGet.Client module..."
-            if ($Debug) {
-                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery -ErrorAction SilentlyContinue } catch { }
-            } else {
-                try { Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery -ErrorAction SilentlyContinue *>&1 | Out-Null } catch { }
-            }
+            Write-Output "Installing Microsoft.WinGet.Client module (latest)..."
+            Install-Module -Name Microsoft.WinGet.Client -Force -AllowClobber -Repository PSGallery -ErrorAction SilentlyContinue *>&1 | Out-Null
 
             Write-Output "Installing winget (this takes a minute or two)..."
-            if ($Debug) {
-                try { Repair-WinGetPackageManager -AllUsers -Force -Latest } catch { }
-            } else {
-                try { Repair-WinGetPackageManager -AllUsers -Force -Latest *>&1 | Out-Null } catch { }
-            }
+            try { Repair-WinGetPackageManager -AllUsers -Force -Latest *>&1 | Out-Null } catch { }
+
         } catch {
             $errorHandled = Handle-Error $_
             if ($null -ne $errorHandled) {
@@ -1563,14 +1571,14 @@ try {
     #  Server 2019 or alternate install method only
     # ============================================================================ #
 
-    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -and $osVersion.InstallationType -ne "Server Core" -or $AlternateInstallMethod -or $RunAsSystem -or $WingetVersion -ne 'latest') {
+    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -and $osVersion.InstallationType -ne "Server Core" -or $AlternateInstallMethod -or $RunAsSystem) {
 
         # ============================================================================ #
         # Dependencies
         # ============================================================================ #
 
         Write-Section "Dependencies"
-        Write-Verbose "GHtoken=$GHtoken"
+        Write-Debug "GHtoken=$GHtoken"
 
         try {
             # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
@@ -1709,7 +1717,9 @@ try {
     if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $RunAsSystem -eq $false -and $osVersion) {
         # Register winget
         Write-Debug "Registering winget..."
-        Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+        try {
+            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
+        } catch { }
     }
 
     # ============================================================================ #
