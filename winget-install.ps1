@@ -1386,6 +1386,8 @@ try {
     if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
         Write-Output ""
         Write-Output "Detected Windows Server Core. Performing portable winget extraction."
+        Write-Warning "Server Core portable installation is currently in beta. It will install successfully, but may not function properly due to missing dependencies. This feature is still in active development. For details, see: https://github.com/asheroto/winget-install/issues/53"
+
         Write-Section "Portable winget"
 
         $PortableWingetDirectory = Join-Path $env:ProgramFiles "Microsoft\winget"
