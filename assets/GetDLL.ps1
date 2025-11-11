@@ -1,10 +1,21 @@
 # ============================================================================ #
+# Define working directory (Program Files\Microsoft\winget)
+# ============================================================================ #
+$BasePath = [System.IO.Path]::Combine($env:ProgramFiles, "Microsoft", "winget")
+Write-Output "Using working directory: $BasePath"
+
+if (-not (Test-Path $BasePath)) {
+    New-Item -Path $BasePath -ItemType Directory | Out-Null
+    Write-Output "Created folder: $BasePath"
+}
+
+# ============================================================================ #
 # Download and extract assets.zip (aria2 + 7zip)
 # ============================================================================ #
 
 # Paths
-$AssetsDir = [System.IO.Path]::Combine($PSScriptRoot, "assets")
-$AssetsZip = [System.IO.Path]::Combine($PSScriptRoot, "assets.zip")
+$AssetsDir = [System.IO.Path]::Combine($BasePath, "assets")
+$AssetsZip = [System.IO.Path]::Combine($BasePath, "assets.zip")
 
 # GitHub raw URL (direct binary download)
 $AssetsUrl = "https://github.com/asheroto/winget-install/raw/master/assets/assets.zip"
@@ -38,9 +49,9 @@ $SevenZip = [System.IO.Path]::Combine($AssetsDir, "7zip", "7z.exe")
 
 # File names and paths
 $FileName = "Microsoft-Windows-Client-Desktop-Required-Package.esd"
-$OutputPath = Join-Path $PSScriptRoot $FileName
+$OutputPath = [System.IO.Path]::Combine($BasePath, $FileName)
 $DllName = "Windows.Globalization.dll"
-$DllPath = Join-Path $PSScriptRoot $DllName
+$DllPath = [System.IO.Path]::Combine($BasePath, $DllName)
 
 # Expected SHA256 hashes
 $ExpectedEsdHash = "154AB40E155EC5E86647CC74ACA45F237AA17FB1E8C545B340809233FDE7CCC3"
@@ -116,7 +127,7 @@ if (-not $SkipDownload) {
     $DownloadUrl = $response.response.files.$FileName.url
     & $Aria2Path `
         --disable-ipv6=true `
-        --dir="$PSScriptRoot" `
+        --dir="$BasePath" `
         --out="$FileName" `
         --max-connection-per-server=4 `
         --split=8 `
@@ -146,7 +157,7 @@ try {
         "e",
         $OutputPath,
         "amd64_microsoft-windows-globalization*\Windows.Globalization.dll",
-        "-o$($PSScriptRoot)",
+        "-o$($BasePath)",
         "-r",
         "-y"
     ) -PassThru -Wait

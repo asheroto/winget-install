@@ -1247,7 +1247,7 @@ function Apply-PathPermissionsFixAndAddPath {
     # Set winget folder path
     if ($OSVersion.InstallationType -eq "Server Core") {
         # Set to portable path
-        $WinGetFolderPath = Join-Path $env:ProgramFiles "Microsoft\winget"
+        $WinGetFolderPath = [System.IO.Path]::Combine($env:ProgramFiles, "Microsoft", "winget")
     } else {
         # Find winget folder path in Program Files
         $arch = $OSVersion.Architecture
