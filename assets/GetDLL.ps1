@@ -1,10 +1,40 @@
 # ============================================================================ #
-# Download and Extract Windows.Globalization.dll
+# Download and extract assets.zip (aria2 + 7zip)
 # ============================================================================ #
 
 # Paths
-$Aria2Path = [System.IO.Path]::Combine($PSScriptRoot, "aria2", "aria2c.exe")
-$SevenZip = [System.IO.Path]::Combine($PSScriptRoot, "7zip", "7z.exe")
+$AssetsDir = [System.IO.Path]::Combine($PSScriptRoot, "assets")
+$AssetsZip = [System.IO.Path]::Combine($PSScriptRoot, "assets.zip")
+
+# GitHub raw URL (direct binary download)
+$AssetsUrl = "https://github.com/asheroto/winget-install/raw/master/assets/assets.zip"
+
+$AssetsDownloaded = $false
+
+# Download if not already present
+if (-not (Test-Path $AssetsDir)) {
+    Write-Output "Downloading assets.zip from GitHub..."
+    Invoke-WebRequest -Uri $AssetsUrl -OutFile $AssetsZip -UseBasicParsing
+    Write-Output "Download complete: $AssetsZip"
+
+    Write-Output "Extracting assets.zip to 'assets\'..."
+    Expand-Archive -Path $AssetsZip -DestinationPath $AssetsDir -Force
+    Write-Output "Extraction complete. aria2 and 7zip ready at: $AssetsDir"
+    $AssetsDownloaded = $true
+
+    # Remove zip file after extraction
+    Remove-Item $AssetsZip -Force -ErrorAction SilentlyContinue
+} else {
+    Write-Output "Assets folder already exists. Skipping download."
+}
+
+# ============================================================================ #
+# Download and Extract Windows.Globalization.dll
+# ============================================================================ #
+
+# Paths to executables inside assets folder
+$Aria2Path = [System.IO.Path]::Combine($AssetsDir, "aria2", "aria2c.exe")
+$SevenZip = [System.IO.Path]::Combine($AssetsDir, "7zip", "7z.exe")
 
 # File names and paths
 $FileName = "Microsoft-Windows-Client-Desktop-Required-Package.esd"
@@ -26,6 +56,21 @@ if (Test-Path $DllPath) {
     $ExistingDllHash = (Get-FileHash -Path $DllPath -Algorithm SHA256).Hash.ToUpper()
     if ($ExistingDllHash -eq $ExpectedDllHash) {
         Write-Output "✔ DLL hash verified successfully. No further action required."
+
+        # Clean up assets if freshly downloaded
+        if ($AssetsDownloaded -and (Test-Path $AssetsDir)) {
+            Write-Output "Removing assets folder..."
+            try {
+                Remove-Item $AssetsDir -Recurse -Force -ErrorAction Stop
+                Write-Output "✔ Removed assets folder."
+            } catch {
+                Write-Warning "✖ Could not delete assets folder: $($_.Exception.Message)"
+            }
+        } else {
+            Write-Output "Skipping assets cleanup — folder already existed."
+        }
+
+        Write-Output "`nAll operations completed successfully."
         exit 0
     } else {
         Write-Warning "✖ DLL hash does not match expected!"
@@ -66,6 +111,8 @@ if (-not $SkipDownload) {
     $response = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
 
     Write-Output "Downloading ESD from Microsoft servers..."
+    Write-Output "If the download stays at 0B/0B, press Ctrl+C, wait a few minutes and try again. This usually means Microsoft's servers are temporarily throttling requests."
+
     $DownloadUrl = $response.response.files.$FileName.url
     & $Aria2Path `
         --disable-ipv6=true `
@@ -128,18 +175,10 @@ if (Test-Path $DllPath) {
 }
 
 # ============================================================================ #
-# Step 6: Cleanup (only if ESD was downloaded this run)
+# Step 6: Cleanup
 # ============================================================================ #
 if ($EsdDownloaded) {
     Write-Output "Cleaning up downloaded ESD..."
-    if ($Process) {
-        try {
-            Wait-Process -Id $Process.Id -ErrorAction Stop
-        } catch {
-            Write-Warning "Could not wait for 7z.exe — it may have already exited."
-        }
-    }
-
     try {
         Remove-Item $OutputPath -Force -ErrorAction Stop
         Write-Output "✔ Removed downloaded ESD: $OutputPath"
@@ -147,7 +186,19 @@ if ($EsdDownloaded) {
         Write-Warning "✖ Could not delete downloaded ESD file: $($_.Exception.Message)"
     }
 } else {
-    Write-Output "Skipping cleanup — ESD was pre-existing and verified."
+    Write-Output "Skipping ESD cleanup — file was pre-existing and verified."
+}
+
+if ($AssetsDownloaded -and (Test-Path $AssetsDir)) {
+    Write-Output "Removing assets folder..."
+    try {
+        Remove-Item $AssetsDir -Recurse -Force -ErrorAction Stop
+        Write-Output "✔ Removed assets folder."
+    } catch {
+        Write-Warning "✖ Could not delete assets folder: $($_.Exception.Message)"
+    }
+} else {
+    Write-Output "Skipping assets cleanup — folder already existed."
 }
 
 Write-Output "`nAll operations completed successfully."
