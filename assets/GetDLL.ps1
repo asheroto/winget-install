@@ -149,19 +149,37 @@ if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 # Step 4: Extract DLL
 # ============================================================================ #
 Write-Output "Extracting Windows.Globalization.dll from ESD..."
+
+# Temp extraction folder
+$TempExtract = [System.IO.Path]::Combine($BasePath, "extract-temp")
+if (-not (Test-Path $TempExtract)) { New-Item -Path $TempExtract -ItemType Directory | Out-Null }
+
 try {
     Start-Process -FilePath $SevenZip -ArgumentList @(
-        "e", $OutputPath,
+        "e",
+        "`"$OutputPath`"",
         "amd64_microsoft-windows-globalization*\Windows.Globalization.dll",
-        "-o$BasePath", "-r", "-y"
+        "-o`"$TempExtract`"",
+        "-r",
+        "-y"
     ) -Wait
-    Write-Output "Extraction complete."
+
+    # Check if DLL extracted
+    $ExtractedDll = Get-ChildItem -Path $TempExtract -Recurse -Filter "Windows.Globalization.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $ExtractedDll) {
+        Move-Item -Path $ExtractedDll.FullName -Destination $DllPath -Force
+        Write-Output "✔ Extracted Windows.Globalization.dll to: $DllPath"
+    } else {
+        Write-Warning "✖ DLL not found in extracted files!"
+        $ScriptFailed = $true
+    }
+
+    # Clean up temp folder
+    Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue
 } catch {
     Write-Warning "✖ 7-Zip extraction failed: $($_.Exception.Message)"
     $ScriptFailed = $true
 }
-
-if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
 # ============================================================================ #
 # Step 5: Verify DLL hash
