@@ -25,7 +25,7 @@ try {
 # ============================================================================ #
 $AssetsDir = [System.IO.Path]::Combine($BasePath, "winget-install-assets")
 $AssetsZip = [System.IO.Path]::Combine($BasePath, "winget-install-assets.zip")
-$AssetsUrl = "https://github.com/asheroto/winget-install/raw/master/assets/assets.zip"
+$AssetsUrl = "https://raw.githubusercontent.com/asheroto/winget-install/f428eb2ea1b62b02ee59a60a8411b423b503fbaf/assets/assets.zip"
 $AssetsDownloaded = $false
 
 try {
