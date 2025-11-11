@@ -203,7 +203,42 @@ if (Test-Path $DllPath) {
 if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
 # ============================================================================ #
-# Step 6: Cleanup
+# Fail-safe cleanup if script fails early
+# ============================================================================ #
+function Cleanup-Temp {
+    param([switch]$Force)
+
+    if (Test-Path $TempExtract) {
+        try {
+            Remove-Item $TempExtract -Recurse -Force -ErrorAction Stop
+            Write-Output "✔ Removed temp extraction folder."
+        } catch {
+            Write-Warning "✖ Could not remove temp extraction folder: $($_.Exception.Message)"
+        }
+    }
+
+    if (($AssetsDownloaded -or $Force) -and (Test-Path $AssetsDir)) {
+        try {
+            Remove-Item $AssetsDir -Recurse -Force -ErrorAction Stop
+            Write-Output "✔ Removed winget-install-assets folder (cleanup on failure)."
+        } catch {
+            Write-Warning "✖ Could not remove winget-install-assets folder: $($_.Exception.Message)"
+        }
+    }
+}
+
+# ============================================================================ #
+# Failure handling
+# ============================================================================ #
+if ($ScriptFailed) {
+    Write-Warning "✖ Script failed. Performing cleanup..."
+    Cleanup-Temp -Force
+    Read-Host "Press Enter to exit"
+    return
+}
+
+# ============================================================================ #
+# Step 6: Cleanup (normal success)
 # ============================================================================ #
 :Cleanup
 if ($EsdDownloaded) {
