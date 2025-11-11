@@ -203,6 +203,22 @@ if (Test-Path $DllPath) {
 if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
 # ============================================================================ #
+# Step 5.1: Symlink Windows.System.UserProfile.dll → Windows.Globalization.dll
+# ============================================================================ #
+$UserProfileDll = [System.IO.Path]::Combine($BasePath, "Windows.System.UserProfile.dll")
+
+try {
+    if (-not (Test-Path $UserProfileDll)) {
+        New-Item -ItemType SymbolicLink -Path $UserProfileDll -Target $DllPath -Force | Out-Null
+        Write-Output "✔ Created symlink: Windows.System.UserProfile.dll → Windows.Globalization.dll"
+    } else {
+        Write-Output "Symbolic link or file already exists: $UserProfileDll"
+    }
+} catch {
+    Write-Warning "✖ Failed to create symlink: $($_.Exception.Message)"
+}
+
+# ============================================================================ #
 # Fail-safe cleanup if script fails early
 # ============================================================================ #
 function Cleanup-Temp {
@@ -240,7 +256,6 @@ if ($ScriptFailed) {
 # ============================================================================ #
 # Step 6: Cleanup (normal success)
 # ============================================================================ #
-:Cleanup
 if ($EsdDownloaded) {
     Write-Output "Cleaning up downloaded ESD..."
     try {
