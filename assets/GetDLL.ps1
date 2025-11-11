@@ -12,29 +12,29 @@ if (-not (Test-Path $BasePath)) {
 $ScriptFailed = $false
 
 # ============================================================================ #
-# Download and extract assets.zip (aria2 + 7zip)
+# Download and extract winget-install-assets.zip (aria2 + 7zip)
 # ============================================================================ #
-$AssetsDir = [System.IO.Path]::Combine($BasePath, "assets")
-$AssetsZip = [System.IO.Path]::Combine($BasePath, "assets.zip")
+$AssetsDir = [System.IO.Path]::Combine($BasePath, "winget-install-assets")
+$AssetsZip = [System.IO.Path]::Combine($BasePath, "winget-install-assets.zip")
 $AssetsUrl = "https://github.com/asheroto/winget-install/raw/master/assets/assets.zip"
 $AssetsDownloaded = $false
 
 try {
     if (-not (Test-Path $AssetsDir)) {
-        Write-Output "Downloading assets.zip from GitHub..."
+        Write-Output "Downloading winget-install-assets.zip from GitHub..."
         Invoke-WebRequest -Uri $AssetsUrl -OutFile $AssetsZip -UseBasicParsing
         Write-Output "Download complete: $AssetsZip"
 
-        Write-Output "Extracting assets.zip to 'assets\'..."
+        Write-Output "Extracting assets.zip to 'winget-install-assets\'..."
         Expand-Archive -Path $AssetsZip -DestinationPath $AssetsDir -Force
         Write-Output "Extraction complete. aria2 and 7zip ready at: $AssetsDir"
         $AssetsDownloaded = $true
         Remove-Item $AssetsZip -Force -ErrorAction SilentlyContinue
     } else {
-        Write-Output "Assets folder already exists. Skipping download."
+        Write-Output "winget-install-assets folder already exists. Skipping download."
     }
 } catch {
-    Write-Warning "✖ Failed to download or extract assets: $($_.Exception.Message)"
+    Write-Warning "✖ Failed to download or extract winget-install-assets: $($_.Exception.Message)"
     $ScriptFailed = $true
 }
 
@@ -190,12 +190,12 @@ if ($EsdDownloaded) {
 }
 
 if ($AssetsDownloaded -and (Test-Path $AssetsDir)) {
-    Write-Output "Removing assets folder..."
+    Write-Output "Removing winget-install-assets folder..."
     try {
         Remove-Item $AssetsDir -Recurse -Force -ErrorAction Stop
-        Write-Output "✔ Removed assets folder."
+        Write-Output "✔ Removed winget-install-assets folder."
     } catch {
-        Write-Warning "✖ Could not delete assets folder: $($_.Exception.Message)"
+        Write-Warning "✖ Could not delete winget-install-assets folder: $($_.Exception.Message)"
     }
 }
 
