@@ -1,4 +1,6 @@
 $ScriptFailed = $false
+$SkipToCleanup = $false
+
 # ============================================================================ #
 # Define working directory (Program Files\Microsoft\winget)
 # ============================================================================ #
@@ -71,7 +73,7 @@ if (Test-Path $DllPath) {
     $ExistingDllHash = (Get-FileHash -Path $DllPath -Algorithm SHA256).Hash.ToUpper()
     if ($ExistingDllHash -eq $ExpectedDllHash) {
         Write-Output "✔ DLL hash verified successfully. No further action required."
-        goto Cleanup
+        $SkipToCleanup = $true
     } else {
         Write-Warning "✖ DLL hash mismatch!"
         Write-Output "Expected: $ExpectedDllHash"
@@ -83,174 +85,131 @@ if (Test-Path $DllPath) {
 if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
 # ============================================================================ #
-# Step 2: Verify or download ESD
+# Step 2–5: Only run if DLL not already valid
 # ============================================================================ #
-if (Test-Path $OutputPath) {
-    Write-Output "ESD file already exists. Verifying hash for: $OutputPath"
-    $ExistingEsdHash = (Get-FileHash -Path $OutputPath -Algorithm SHA256).Hash.ToUpper()
-    if ($ExistingEsdHash -eq $ExpectedEsdHash) {
-        Write-Output "✔ ESD hash verified successfully. Skipping download."
-        $SkipDownload = $true
+if (-not $SkipToCleanup) {
+
+    # Step 2: Verify or download ESD
+    if (Test-Path $OutputPath) {
+        Write-Output "ESD file already exists. Verifying hash for: $OutputPath"
+        $ExistingEsdHash = (Get-FileHash -Path $OutputPath -Algorithm SHA256).Hash.ToUpper()
+        if ($ExistingEsdHash -eq $ExpectedEsdHash) {
+            Write-Output "✔ ESD hash verified successfully. Skipping download."
+            $SkipDownload = $true
+        } else {
+            Write-Warning "✖ ESD hash mismatch!"
+            Write-Output "Expected: $ExpectedEsdHash"
+            Write-Output "Actual:   $ExistingEsdHash"
+            $ScriptFailed = $true
+        }
     } else {
-        Write-Warning "✖ ESD hash mismatch!"
-        Write-Output "Expected: $ExpectedEsdHash"
-        Write-Output "Actual:   $ExistingEsdHash"
+        $SkipDownload = $false
+    }
+
+    if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
+
+    # Step 3: Download ESD if needed
+    if (-not $SkipDownload) {
+        try {
+            Write-Output "Fetching metadata from UUP Dump API..."
+            $Id = "b9f1ddc0-255a-43e5-b7a4-baf4e12ffabe"
+            $ApiUrl = "https://api.uupdump.net/get.php?id=$Id"
+            $response = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
+
+            Write-Output "Downloading ESD from Microsoft servers..."
+            $DownloadUrl = $response.response.files.$FileName.url
+            & $Aria2Path `
+                --disable-ipv6=true `
+                --dir="$BasePath" `
+                --out="$FileName" `
+                --max-connection-per-server=4 `
+                --split=8 `
+                --min-split-size=1M `
+                "$DownloadUrl"
+
+            $EsdDownloaded = $true
+            Write-Output "Download complete: $OutputPath"
+
+            Write-Output "Verifying downloaded ESD hash..."
+            $ActualEsdHash = (Get-FileHash -Path $OutputPath -Algorithm SHA256).Hash.ToUpper()
+            if ($ActualEsdHash -ne $ExpectedEsdHash) {
+                Write-Warning "✖ ESD hash mismatch after download!"
+                Write-Output "Expected: $ExpectedEsdHash"
+                Write-Output "Actual:   $ActualEsdHash"
+                $ScriptFailed = $true
+            } else {
+                Write-Output "✔ ESD hash verified successfully."
+            }
+        } catch {
+            Write-Warning "✖ Error during ESD download: $($_.Exception.Message)"
+            $ScriptFailed = $true
+        }
+    }
+
+    if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
+
+    # Step 4: Extract DLL
+    Write-Output "Extracting Windows.Globalization.dll from ESD..."
+    $TempExtract = [System.IO.Path]::Combine($BasePath, "extract-temp")
+    if (-not (Test-Path $TempExtract)) { New-Item -Path $TempExtract -ItemType Directory | Out-Null }
+
+    try {
+        Start-Process -FilePath $SevenZip -ArgumentList @(
+            "e",
+            "`"$OutputPath`"",
+            "amd64_microsoft-windows-globalization*\Windows.Globalization.dll",
+            "-o`"$TempExtract`"",
+            "-r",
+            "-y"
+        ) -Wait
+
+        $ExtractedDll = Get-ChildItem -Path $TempExtract -Recurse -Filter "Windows.Globalization.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -ne $ExtractedDll) {
+            Move-Item -Path $ExtractedDll.FullName -Destination $DllPath -Force
+            Write-Output "✔ Extracted Windows.Globalization.dll to: $DllPath"
+        } else {
+            Write-Warning "✖ DLL not found in extracted files!"
+            $ScriptFailed = $true
+        }
+
+        Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue
+    } catch {
+        Write-Warning "✖ 7-Zip extraction failed: $($_.Exception.Message)"
         $ScriptFailed = $true
     }
-} else {
-    $SkipDownload = $false
-}
 
-if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
+    if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
-# ============================================================================ #
-# Step 3: Download ESD if needed
-# ============================================================================ #
-if (-not $SkipDownload) {
-    try {
-        Write-Output "Fetching metadata from UUP Dump API..."
-        $Id = "b9f1ddc0-255a-43e5-b7a4-baf4e12ffabe"
-        $ApiUrl = "https://api.uupdump.net/get.php?id=$Id"
-        $response = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
-
-        Write-Output "Downloading ESD from Microsoft servers..."
-        $DownloadUrl = $response.response.files.$FileName.url
-        & $Aria2Path `
-            --disable-ipv6=true `
-            --dir="$BasePath" `
-            --out="$FileName" `
-            --max-connection-per-server=4 `
-            --split=8 `
-            --min-split-size=1M `
-            "$DownloadUrl"
-
-        $EsdDownloaded = $true
-        Write-Output "Download complete: $OutputPath"
-
-        Write-Output "Verifying downloaded ESD hash..."
-        $ActualEsdHash = (Get-FileHash -Path $OutputPath -Algorithm SHA256).Hash.ToUpper()
-        if ($ActualEsdHash -ne $ExpectedEsdHash) {
-            Write-Warning "✖ ESD hash mismatch after download!"
-            Write-Output "Expected: $ExpectedEsdHash"
-            Write-Output "Actual:   $ActualEsdHash"
+    # Step 5: Verify DLL hash
+    Write-Output "Verifying extracted DLL hash..."
+    if (Test-Path $DllPath) {
+        $ActualDllHash = (Get-FileHash -Path $DllPath -Algorithm SHA256).Hash.ToUpper()
+        if ($ActualDllHash -ne $ExpectedDllHash) {
+            Write-Warning "✖ DLL hash mismatch after extraction!"
+            Write-Output "Expected: $ExpectedDllHash"
+            Write-Output "Actual:   $ActualDllHash"
             $ScriptFailed = $true
         } else {
-            Write-Output "✔ ESD hash verified successfully."
+            Write-Output "✔ DLL hash verified successfully."
         }
-    } catch {
-        Write-Warning "✖ Error during ESD download: $($_.Exception.Message)"
-        $ScriptFailed = $true
-    }
-}
-
-if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
-
-# ============================================================================ #
-# Step 4: Extract DLL
-# ============================================================================ #
-Write-Output "Extracting Windows.Globalization.dll from ESD..."
-
-# Temp extraction folder
-$TempExtract = [System.IO.Path]::Combine($BasePath, "extract-temp")
-if (-not (Test-Path $TempExtract)) { New-Item -Path $TempExtract -ItemType Directory | Out-Null }
-
-try {
-    Start-Process -FilePath $SevenZip -ArgumentList @(
-        "e",
-        "`"$OutputPath`"",
-        "amd64_microsoft-windows-globalization*\Windows.Globalization.dll",
-        "-o`"$TempExtract`"",
-        "-r",
-        "-y"
-    ) -Wait
-
-    # Check if DLL extracted
-    $ExtractedDll = Get-ChildItem -Path $TempExtract -Recurse -Filter "Windows.Globalization.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($null -ne $ExtractedDll) {
-        Move-Item -Path $ExtractedDll.FullName -Destination $DllPath -Force
-        Write-Output "✔ Extracted Windows.Globalization.dll to: $DllPath"
     } else {
-        Write-Warning "✖ DLL not found in extracted files!"
+        Write-Warning "✖ DLL not found after extraction!"
         $ScriptFailed = $true
     }
 
-    # Clean up temp folder
-    Remove-Item $TempExtract -Recurse -Force -ErrorAction SilentlyContinue
-} catch {
-    Write-Warning "✖ 7-Zip extraction failed: $($_.Exception.Message)"
-    $ScriptFailed = $true
+    if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 }
-
-# ============================================================================ #
-# Step 5: Verify DLL hash
-# ============================================================================ #
-Write-Output "Verifying extracted DLL hash..."
-if (Test-Path $DllPath) {
-    $ActualDllHash = (Get-FileHash -Path $DllPath -Algorithm SHA256).Hash.ToUpper()
-    if ($ActualDllHash -ne $ExpectedDllHash) {
-        Write-Warning "✖ DLL hash mismatch after extraction!"
-        Write-Output "Expected: $ExpectedDllHash"
-        Write-Output "Actual:   $ActualDllHash"
-        $ScriptFailed = $true
-    } else {
-        Write-Output "✔ DLL hash verified successfully."
-    }
-} else {
-    Write-Warning "✖ DLL not found after extraction!"
-    $ScriptFailed = $true
-}
-
-if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
 # ============================================================================ #
 # Step 5.1: Symlink Windows.System.UserProfile.dll → Windows.Globalization.dll
 # ============================================================================ #
 $UserProfileDll = [System.IO.Path]::Combine($BasePath, "Windows.System.UserProfile.dll")
-
 try {
-    if (-not (Test-Path $UserProfileDll)) {
-        New-Item -ItemType SymbolicLink -Path $UserProfileDll -Target $DllPath -Force | Out-Null
-        Write-Output "✔ Created symlink: Windows.System.UserProfile.dll → Windows.Globalization.dll"
-    } else {
-        Write-Output "Symbolic link or file already exists: $UserProfileDll"
-    }
+    if (Test-Path $UserProfileDll) { Remove-Item $UserProfileDll -Force }
+    New-Item -ItemType SymbolicLink -Path $UserProfileDll -Target $DllPath -Force | Out-Null
+    Write-Output "✔ Created symlink: Windows.System.UserProfile.dll → Windows.Globalization.dll"
 } catch {
     Write-Warning "✖ Failed to create symlink: $($_.Exception.Message)"
-}
-
-# ============================================================================ #
-# Fail-safe cleanup if script fails early
-# ============================================================================ #
-function Cleanup-Temp {
-    param([switch]$Force)
-
-    if (Test-Path $TempExtract) {
-        try {
-            Remove-Item $TempExtract -Recurse -Force -ErrorAction Stop
-            Write-Output "✔ Removed temp extraction folder."
-        } catch {
-            Write-Warning "✖ Could not remove temp extraction folder: $($_.Exception.Message)"
-        }
-    }
-
-    if (($AssetsDownloaded -or $Force) -and (Test-Path $AssetsDir)) {
-        try {
-            Remove-Item $AssetsDir -Recurse -Force -ErrorAction Stop
-            Write-Output "✔ Removed winget-install-assets folder (cleanup on failure)."
-        } catch {
-            Write-Warning "✖ Could not remove winget-install-assets folder: $($_.Exception.Message)"
-        }
-    }
-}
-
-# ============================================================================ #
-# Failure handling
-# ============================================================================ #
-if ($ScriptFailed) {
-    Write-Warning "✖ Script failed. Performing cleanup..."
-    Cleanup-Temp -Force
-    Read-Host "Press Enter to exit"
-    return
 }
 
 # ============================================================================ #
