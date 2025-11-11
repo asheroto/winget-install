@@ -1,4 +1,3 @@
-$ScriptFailed = $false
 # ============================================================================ #
 # Define working directory (Program Files\Microsoft\winget)
 # ============================================================================ #
@@ -10,15 +9,7 @@ if (-not (Test-Path $BasePath)) {
     Write-Output "Created folder: $BasePath"
 }
 
-# ============================================================================ #
-# Ensure modern TLS protocols for Invoke-RestMethod and Invoke-WebRequest
-# ============================================================================ #
-try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor 3072
-    Write-Output "Enabled TLS 1.2 support for secure connections."
-} catch {
-    Write-Warning "Could not enable TLS 1.2. Some HTTPS requests may fail on older systems."
-}
+$ScriptFailed = $false
 
 # ============================================================================ #
 # Download and extract winget-install-assets.zip (aria2 + 7zip)
