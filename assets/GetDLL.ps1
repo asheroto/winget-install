@@ -9,91 +9,72 @@ if (-not (Test-Path $BasePath)) {
     Write-Output "Created folder: $BasePath"
 }
 
+$ScriptFailed = $false
+
 # ============================================================================ #
 # Download and extract assets.zip (aria2 + 7zip)
 # ============================================================================ #
-
-# Paths
 $AssetsDir = [System.IO.Path]::Combine($BasePath, "assets")
 $AssetsZip = [System.IO.Path]::Combine($BasePath, "assets.zip")
-
-# GitHub raw URL (direct binary download)
 $AssetsUrl = "https://github.com/asheroto/winget-install/raw/master/assets/assets.zip"
-
 $AssetsDownloaded = $false
 
-# Download if not already present
-if (-not (Test-Path $AssetsDir)) {
-    Write-Output "Downloading assets.zip from GitHub..."
-    Invoke-WebRequest -Uri $AssetsUrl -OutFile $AssetsZip -UseBasicParsing
-    Write-Output "Download complete: $AssetsZip"
+try {
+    if (-not (Test-Path $AssetsDir)) {
+        Write-Output "Downloading assets.zip from GitHub..."
+        Invoke-WebRequest -Uri $AssetsUrl -OutFile $AssetsZip -UseBasicParsing
+        Write-Output "Download complete: $AssetsZip"
 
-    Write-Output "Extracting assets.zip to 'assets\'..."
-    Expand-Archive -Path $AssetsZip -DestinationPath $AssetsDir -Force
-    Write-Output "Extraction complete. aria2 and 7zip ready at: $AssetsDir"
-    $AssetsDownloaded = $true
-
-    # Remove zip file after extraction
-    Remove-Item $AssetsZip -Force -ErrorAction SilentlyContinue
-} else {
-    Write-Output "Assets folder already exists. Skipping download."
+        Write-Output "Extracting assets.zip to 'assets\'..."
+        Expand-Archive -Path $AssetsZip -DestinationPath $AssetsDir -Force
+        Write-Output "Extraction complete. aria2 and 7zip ready at: $AssetsDir"
+        $AssetsDownloaded = $true
+        Remove-Item $AssetsZip -Force -ErrorAction SilentlyContinue
+    } else {
+        Write-Output "Assets folder already exists. Skipping download."
+    }
+} catch {
+    Write-Warning "✖ Failed to download or extract assets: $($_.Exception.Message)"
+    $ScriptFailed = $true
 }
 
-# ============================================================================ #
-# Download and Extract Windows.Globalization.dll
-# ============================================================================ #
+if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
-# Paths to executables inside assets folder
+# ============================================================================ #
+# Paths and expected hashes
+# ============================================================================ #
 $Aria2Path = [System.IO.Path]::Combine($AssetsDir, "aria2", "aria2c.exe")
 $SevenZip = [System.IO.Path]::Combine($AssetsDir, "7zip", "7z.exe")
-
-# File names and paths
 $FileName = "Microsoft-Windows-Client-Desktop-Required-Package.esd"
 $OutputPath = [System.IO.Path]::Combine($BasePath, $FileName)
 $DllName = "Windows.Globalization.dll"
 $DllPath = [System.IO.Path]::Combine($BasePath, $DllName)
 
-# Expected SHA256 hashes
 $ExpectedEsdHash = "154AB40E155EC5E86647CC74ACA45F237AA17FB1E8C545B340809233FDE7CCC3"
 $ExpectedDllHash = "7C1D656A04E000C16D8AF88601E289E63DE36A51F251F50A2BB759CB0F73942D"
-
 $EsdDownloaded = $false
 
 # ============================================================================ #
-# Step 1: Verify existing DLL first (goal file)
+# Step 1: Verify DLL first
 # ============================================================================ #
 if (Test-Path $DllPath) {
     Write-Output "DLL already exists. Verifying hash for: $DllPath"
     $ExistingDllHash = (Get-FileHash -Path $DllPath -Algorithm SHA256).Hash.ToUpper()
     if ($ExistingDllHash -eq $ExpectedDllHash) {
         Write-Output "✔ DLL hash verified successfully. No further action required."
-
-        # Clean up assets if freshly downloaded
-        if ($AssetsDownloaded -and (Test-Path $AssetsDir)) {
-            Write-Output "Removing assets folder..."
-            try {
-                Remove-Item $AssetsDir -Recurse -Force -ErrorAction Stop
-                Write-Output "✔ Removed assets folder."
-            } catch {
-                Write-Warning "✖ Could not delete assets folder: $($_.Exception.Message)"
-            }
-        } else {
-            Write-Output "Skipping assets cleanup — folder already existed."
-        }
-
-        Write-Output "`nAll operations completed successfully."
-        exit 0
+        goto Cleanup
     } else {
-        Write-Warning "✖ DLL hash does not match expected!"
+        Write-Warning "✖ DLL hash mismatch!"
         Write-Output "Expected: $ExpectedDllHash"
         Write-Output "Actual:   $ExistingDllHash"
-        Write-Warning "Please delete the existing DLL before running this script again."
-        exit 1
+        $ScriptFailed = $true
     }
 }
 
+if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
+
 # ============================================================================ #
-# Step 2: Verify or download ESD (only needed if DLL missing)
+# Step 2: Verify or download ESD
 # ============================================================================ #
 if (Test-Path $OutputPath) {
     Write-Output "ESD file already exists. Verifying hash for: $OutputPath"
@@ -102,70 +83,76 @@ if (Test-Path $OutputPath) {
         Write-Output "✔ ESD hash verified successfully. Skipping download."
         $SkipDownload = $true
     } else {
-        Write-Warning "✖ ESD hash does not match expected!"
+        Write-Warning "✖ ESD hash mismatch!"
         Write-Output "Expected: $ExpectedEsdHash"
         Write-Output "Actual:   $ExistingEsdHash"
-        Write-Warning "Please delete the existing ESD if you want to re-download it."
-        exit 1
+        $ScriptFailed = $true
     }
 } else {
     $SkipDownload = $false
 }
 
+if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
+
 # ============================================================================ #
-# Step 3: Download ESD (if not verified)
+# Step 3: Download ESD if needed
 # ============================================================================ #
 if (-not $SkipDownload) {
-    Write-Output "Fetching metadata from UUP Dump API..."
-    $Id = "b9f1ddc0-255a-43e5-b7a4-baf4e12ffabe"
-    $ApiUrl = "https://api.uupdump.net/get.php?id=$Id"
-    $response = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
+    try {
+        Write-Output "Fetching metadata from UUP Dump API..."
+        $Id = "b9f1ddc0-255a-43e5-b7a4-baf4e12ffabe"
+        $ApiUrl = "https://api.uupdump.net/get.php?id=$Id"
+        $response = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
 
-    Write-Output "Downloading ESD from Microsoft servers..."
-    Write-Output "If the download stays at 0B/0B, press Ctrl+C, wait a few minutes and try again. This usually means Microsoft's servers are temporarily throttling requests."
+        Write-Output "Downloading ESD from Microsoft servers..."
+        $DownloadUrl = $response.response.files.$FileName.url
+        & $Aria2Path `
+            --disable-ipv6=true `
+            --dir="$BasePath" `
+            --out="$FileName" `
+            --max-connection-per-server=4 `
+            --split=8 `
+            --min-split-size=1M `
+            "$DownloadUrl"
 
-    $DownloadUrl = $response.response.files.$FileName.url
-    & $Aria2Path `
-        --disable-ipv6=true `
-        --dir="$BasePath" `
-        --out="$FileName" `
-        --max-connection-per-server=4 `
-        --split=8 `
-        --min-split-size=1M `
-        "$DownloadUrl"
+        $EsdDownloaded = $true
+        Write-Output "Download complete: $OutputPath"
 
-    $EsdDownloaded = $true
-    Write-Output "Download complete: $OutputPath"
-
-    Write-Output "Verifying downloaded ESD hash..."
-    $ActualEsdHash = (Get-FileHash -Path $OutputPath -Algorithm SHA256).Hash.ToUpper()
-    if ($ActualEsdHash -ne $ExpectedEsdHash) {
-        Write-Warning "✖ ESD file hash mismatch after download!"
-        Write-Output "Expected: $ExpectedEsdHash"
-        Write-Output "Actual:   $ActualEsdHash"
-        exit 1
+        Write-Output "Verifying downloaded ESD hash..."
+        $ActualEsdHash = (Get-FileHash -Path $OutputPath -Algorithm SHA256).Hash.ToUpper()
+        if ($ActualEsdHash -ne $ExpectedEsdHash) {
+            Write-Warning "✖ ESD hash mismatch after download!"
+            Write-Output "Expected: $ExpectedEsdHash"
+            Write-Output "Actual:   $ActualEsdHash"
+            $ScriptFailed = $true
+        } else {
+            Write-Output "✔ ESD hash verified successfully."
+        }
+    } catch {
+        Write-Warning "✖ Error during ESD download: $($_.Exception.Message)"
+        $ScriptFailed = $true
     }
-    Write-Output "✔ ESD hash verified successfully."
 }
 
+if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
+
 # ============================================================================ #
-# Step 4: Extract DLL from ESD
+# Step 4: Extract DLL
 # ============================================================================ #
 Write-Output "Extracting Windows.Globalization.dll from ESD..."
 try {
-    $Process = Start-Process -FilePath $SevenZip -ArgumentList @(
-        "e",
-        $OutputPath,
+    Start-Process -FilePath $SevenZip -ArgumentList @(
+        "e", $OutputPath,
         "amd64_microsoft-windows-globalization*\Windows.Globalization.dll",
-        "-o$($BasePath)",
-        "-r",
-        "-y"
-    ) -PassThru -Wait
+        "-o$BasePath", "-r", "-y"
+    ) -Wait
     Write-Output "Extraction complete."
 } catch {
     Write-Warning "✖ 7-Zip extraction failed: $($_.Exception.Message)"
-    exit 1
+    $ScriptFailed = $true
 }
+
+if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
 # ============================================================================ #
 # Step 5: Verify DLL hash
@@ -174,30 +161,32 @@ Write-Output "Verifying extracted DLL hash..."
 if (Test-Path $DllPath) {
     $ActualDllHash = (Get-FileHash -Path $DllPath -Algorithm SHA256).Hash.ToUpper()
     if ($ActualDllHash -ne $ExpectedDllHash) {
-        Write-Warning "✖ Extracted DLL hash mismatch!"
+        Write-Warning "✖ DLL hash mismatch after extraction!"
         Write-Output "Expected: $ExpectedDllHash"
         Write-Output "Actual:   $ActualDllHash"
-        exit 1
+        $ScriptFailed = $true
+    } else {
+        Write-Output "✔ DLL hash verified successfully."
     }
-    Write-Output "✔ DLL hash verified successfully."
 } else {
     Write-Warning "✖ DLL not found after extraction!"
-    exit 1
+    $ScriptFailed = $true
 }
+
+if ($ScriptFailed) { Read-Host "Press Enter to exit"; return }
 
 # ============================================================================ #
 # Step 6: Cleanup
 # ============================================================================ #
+:Cleanup
 if ($EsdDownloaded) {
     Write-Output "Cleaning up downloaded ESD..."
     try {
         Remove-Item $OutputPath -Force -ErrorAction Stop
         Write-Output "✔ Removed downloaded ESD: $OutputPath"
     } catch {
-        Write-Warning "✖ Could not delete downloaded ESD file: $($_.Exception.Message)"
+        Write-Warning "✖ Could not delete downloaded ESD: $($_.Exception.Message)"
     }
-} else {
-    Write-Output "Skipping ESD cleanup — file was pre-existing and verified."
 }
 
 if ($AssetsDownloaded -and (Test-Path $AssetsDir)) {
@@ -208,8 +197,7 @@ if ($AssetsDownloaded -and (Test-Path $AssetsDir)) {
     } catch {
         Write-Warning "✖ Could not delete assets folder: $($_.Exception.Message)"
     }
-} else {
-    Write-Output "Skipping assets cleanup — folder already existed."
 }
 
 Write-Output "`nAll operations completed successfully."
+Read-Host "Press Enter to close"
