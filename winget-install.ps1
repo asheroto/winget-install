@@ -1234,7 +1234,7 @@ function Install-LibIfRequired {
 function Apply-PathPermissionsFixAndAddPath {
     param(
         [Parameter(Mandatory)]
-        [string]$OSVersion
+        [PSCustomObject]$OSVersion
     )
 
     # ============================================================================ #
