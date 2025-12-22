@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.3.2
+.VERSION 5.3.4
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -67,6 +67,8 @@
 [Version 5.3.0] - Added support for installing specific version of winget. Added try/catch to prevent errors when getting/setting ACLs. Thank you @jantari for the contribution.
 [Version 5.3.1] - Fixed glitch with Get-WinGetFolderPath. Improved detection of Winget version number if specified. Added support for GitHub API token. Thank you @m41kc0d3 for the contribution.
 [Version 5.3.2] - Fixed an incorrect parameter type for Apply-PathPermissionsFixAndAddPath. Thanks to @dblohm7 for the fix.
+[Version 5.3.3] - Fixed missing debug variable causing unexpected error.
+[Version 5.3.4] - Fixed debug variable not defined.
 
 #>
 
@@ -100,7 +102,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.3.2
+    Version      : 5.3.4
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -121,7 +123,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.3.2'
+$CurrentVersion = '5.3.4'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -149,9 +151,13 @@ if ($PSBoundParameters.ContainsKey('Verbose') -and $PSBoundParameters['Verbose']
 }
 
 # Set debug preferences if -Debug is specified
+$Debug = $false
 if ($PSBoundParameters.ContainsKey('Debug') -and $PSBoundParameters['Debug']) {
     $DebugPreference = 'Continue'
     $ConfirmPreference = 'None'
+
+    # Keep for easy detection later in the script
+    $Debug = $true
 }
 
 # Check if running as SYSTEM
