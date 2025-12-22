@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.3.4
+.VERSION 5.3.5
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -69,6 +69,7 @@
 [Version 5.3.2] - Fixed an incorrect parameter type for Apply-PathPermissionsFixAndAddPath. Thanks to @dblohm7 for the fix.
 [Version 5.3.3] - Fixed missing debug variable causing unexpected error.
 [Version 5.3.4] - Fixed debug variable not defined.
+[Version 5.3.5] - Improved winget detection to verify installation and functionality. Enforced alternate install method on Server 2022. Added winget AppX detection to prevent appx registration errors.
 
 #>
 
@@ -102,7 +103,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.3.4
+    Version      : 5.3.5
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -123,7 +124,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.3.4'
+$CurrentVersion = '5.3.5'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -1544,8 +1545,12 @@ try {
     # Install using the regular method, Windows 10+
     # ============================================================================ #
 
-    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $AlternateInstallMethod -eq $false -and $RunAsSystem -eq $false) {
-
+    if (
+        $osVersion.NumericVersion -notin 2019, 2022 -and
+        $osVersion.InstallationType -ne 'Server Core' -and
+        -not $AlternateInstallMethod -and
+        -not $RunAsSystem
+    ) {
         Write-Section "winget"
 
         # If WingetVersion is specified, warn user it only works when using the -AlternateInstallMethod.
@@ -1580,7 +1585,15 @@ try {
     #  Server 2019 or alternate install method only
     # ============================================================================ #
 
-    if (($osVersion.Type -eq "Server" -and ($osVersion.NumericVersion -eq 2019)) -and $osVersion.InstallationType -ne "Server Core" -or $AlternateInstallMethod -or $RunAsSystem) {
+    if (
+        (
+            $osVersion.Type -eq 'Server' -and
+            $osVersion.NumericVersion -in 2019, 2022 -and
+            $osVersion.InstallationType -ne 'Server Core'
+        ) -or
+        $AlternateInstallMethod -or
+        $RunAsSystem
+    ) {
 
         # ============================================================================ #
         # Dependencies
@@ -1720,15 +1733,27 @@ try {
     # ============================================================================ #
     # Force registration
     # ============================================================================ #
-    Write-Output "Registering winget..."
 
-    # Register for all except Server 2019 and Server Core
-    if ($osVersion.NumericVersion -ne 2019 -and $osVersion.InstallationType -ne "Server Core" -and $RunAsSystem -eq $false -and $osVersion) {
-        # Register winget
-        Write-Debug "Registering winget..."
-        try {
-            Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe
-        } catch { }
+    $WingetPackageFamilyName = 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe'
+
+    if (
+        $osVersion.NumericVersion -notin 2019, 2022 -and
+        $osVersion.InstallationType -ne 'Server Core' -and
+        -not $RunAsSystem -and
+        -not $AlternateInstallMethod
+    ) {
+        $WingetPackage = Get-AppxPackage -AllUsers -Name $WingetPackageFamilyName -ErrorAction SilentlyContinue
+
+        if ($null -ne $WingetPackage) {
+            Write-Debug 'Registering winget...'
+            try {
+                Add-AppxPackage -RegisterByFamilyName -MainPackage $WingetPackageFamilyName
+            } catch { }
+        } else {
+            Write-Debug 'Winget package not found. Skipping registration.'
+        }
+    } else {
+        Write-Debug 'Not registering winget...'
     }
 
     # ============================================================================ #
@@ -1748,20 +1773,18 @@ try {
     Start-Sleep -Seconds 3
 
     # Check if winget is installed
-    if (Get-WingetStatus -eq $true) {
-        Write-Output "winget is installed and working. You can go ahead and use it."
-        # If running as SYSTEM, inform the user a restart may be required for the winget command to work
+    $WingetStatus = Get-WingetStatus
+
+    if ($WingetStatus) {
+        Write-Output 'winget is installed and working. You can go ahead and use it.'
         if ($RunAsSystem) {
-            Write-Output "Since this script is running under the SYSTEM context, you may need to restart the computer or session for the winget command to function as expected."
+            Write-Output 'Since this script is running under the SYSTEM context, you may need to restart the computer or session for the winget command to function as expected.'
         }
     } else {
-        # If winget is still not detected as a command, show warning
-        Write-Debug "Get-WinGetStatus: $(Get-WingetStatus)"
-        if (Get-WingetStatus -ne $true) {
-            Write-Warning "winget is installed but is not detected as a command. Try using winget now. If it doesn't work, wait about 1 minute and try again (it is sometimes delayed). Also try restarting your computer."
-            Write-Warning "If you restart your computer and the command still isn't recognized, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
-            Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate`n`n"
-        }
+        Write-Debug "Get-WingetStatus: $WingetStatus"
+        Write-Warning 'winget is installed but is not detected as a command. Try using winget now. If it does not work, wait about 1 minute and try again (it is sometimes delayed). Also try restarting your computer.'
+        Write-Warning "If you restart your computer and the command still is not recognized, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
+        Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate`n`n"
     }
 
     ExitWithDelay 0
