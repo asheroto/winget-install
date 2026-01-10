@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.3.5
+.VERSION 5.3.6
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -70,6 +70,7 @@
 [Version 5.3.3] - Fixed missing debug variable causing unexpected error.
 [Version 5.3.4] - Fixed debug variable not defined.
 [Version 5.3.5] - Improved winget detection to verify installation and functionality. Enforced alternate install method on Server 2022. Added winget AppX detection to prevent appx registration errors.
+[Version 5.3.6] - Fixed bug where GitHub token was not being used during an update check.
 
 #>
 
@@ -103,7 +104,7 @@ This script is designed to be straightforward and easy to use, removing the hass
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.3.5
+    Version      : 5.3.6
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -124,7 +125,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.3.5'
+$CurrentVersion = '5.3.6'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -1296,7 +1297,7 @@ Import-GlobalVariable -VariableName "AlternateInstallMethod"
 Write-Output "winget-install $CurrentVersion"
 
 # Check for updates if -CheckForUpdate is specified
-if ($CheckForUpdate) { CheckForUpdate -RepoOwner $RepoOwner -RepoName $RepoName -CurrentVersion $CurrentVersion -PowerShellGalleryName $PowerShellGalleryName }
+if ($CheckForUpdate) { CheckForUpdate -RepoOwner $RepoOwner -RepoName $RepoName -CurrentVersion $CurrentVersion -PowerShellGalleryName $PowerShellGalleryName -GHtoken $GHtoken}
 
 # Update the script if -UpdateSelf is specified
 if ($UpdateSelf) { UpdateSelf }
