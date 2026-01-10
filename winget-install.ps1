@@ -70,7 +70,7 @@
 [Version 5.3.3] - Fixed missing debug variable causing unexpected error.
 [Version 5.3.4] - Fixed debug variable not defined.
 [Version 5.3.5] - Improved winget detection to verify installation and functionality. Enforced alternate install method on Server 2022. Added winget AppX detection to prevent appx registration errors.
-[Version 5.3.6] - Fixed bug where GitHub token was not being used during an update check.
+[Version 5.3.6] - Fixed bug where GitHub token was not being used during an update check. Thanks for @dteusner for the fix.
 
 #>
 
