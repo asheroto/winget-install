@@ -80,7 +80,7 @@
 .DESCRIPTION
     Downloads and installs the latest version of winget and its dependencies.
 
-This script is designed to be straightforward and easy to use, removing the hassle of manually downloading, installing, and configuring winget. This function should be run with administrative privileges.
+    This script is designed to be straightforward and easy to use, removing the hassle of manually downloading, installing, and configuring winget. This function should be run with administrative privileges.
 .EXAMPLE
     winget-install
 .PARAMETER Debug
