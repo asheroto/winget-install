@@ -114,6 +114,7 @@ param (
     [switch]$Force,
     [switch]$ForceClose,
     [switch]$AlternateInstallMethod,
+    [switch]$PortableInstallMethod,
     [switch]$CheckForUpdate,
     [switch]$Wait,
     [string]$WingetVersion = 'latest',
@@ -1392,9 +1393,13 @@ try {
     # Server Core Portable winget Installation (No AppX registration)
     # ============================================================================ #
 
-    if ($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") {
+    if (($osVersion.Type -eq "Server" -and $osVersion.InstallationType -eq "Server Core") -or $PortableInstallMethod) {
         Write-Output ""
-        Write-Output "Detected Windows Server Core. Performing portable winget extraction."
+        if ($PortableInstallMethod) {
+            Write-Output "Portable install method requested. Performing portable winget extraction."
+        } else {
+            Write-Output "Detected Windows Server Core. Performing portable winget extraction."
+        }
         Write-Warning "Server Core portable installation is currently in beta. It will install successfully, but may not function properly due to missing dependencies. This feature is still in active development. For details, see: https://github.com/asheroto/winget-install/issues/53"
 
         Write-Section "Portable winget"
