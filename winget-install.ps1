@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.3.6
+.VERSION 5.3.7
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -71,6 +71,7 @@
 [Version 5.3.4] - Fixed debug variable not defined.
 [Version 5.3.5] - Improved winget detection to verify installation and functionality. Enforced alternate install method on Server 2022. Added winget AppX detection to prevent appx registration errors.
 [Version 5.3.6] - Fixed bug where GitHub token was not being used during an update check. Thanks for @dteusner for the fix.
+[Version 5.3.7] - Fixed bug where the PowerShell window would close when running the script with irm | iex. Fixed bug where the GitHub token was not being used when downloading dependencies and the license. Fixed version comparison during update check. Improved script startup speed by only detecting the current process when using -ForceClose. Combined manifest helper functions into Get-ManifestProperty.
 
 #>
 
@@ -104,7 +105,7 @@
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.3.6
+    Version      : 5.3.7
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -126,7 +127,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.3.6'
+$CurrentVersion = '5.3.7'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -350,7 +351,7 @@ function Get-GitHubRelease {
         }
     } catch {
         Write-Error "Unable to check for updates.`nError: $_"
-        exit 1
+        ExitWithDelay 1
     }
 }
 
@@ -371,7 +372,7 @@ function CheckForUpdate {
     Write-Output ("Latest Version:   {0,-40}" -f $Data.LatestVersion)
     Write-Output ("Published at:     {0,-40}" -f $Data.PublishedDateTime)
 
-    if ($Data.LatestVersion -gt $CurrentVersion) {
+    if ([version]($Data.LatestVersion -replace '^v') -gt $CurrentVersion) {
         Write-Output ("Status:           {0,-40}" -f "A new version is available.")
         Write-Output "`nOptions to update:"
         Write-Output "- Download latest release: https://github.com/$RepoOwner/$RepoName/releases"
@@ -686,7 +687,11 @@ function ExitWithDelay {
     }
 
     # Exit the script with exit code
-    if ($MyInvocation.CommandOrigin -eq "Runspace") {
+    # When running via 'irm | iex' there is no script file frame, so 'exit' would terminate
+    # the entire PowerShell session and close the window. $PSCommandPath is empty in that
+    # case, so use Break to unwind instead of Exit.
+    if ([string]::IsNullOrEmpty($PSCommandPath)) {
+        $global:LASTEXITCODE = $ExitCode
         Break
     } else {
         Exit $ExitCode
@@ -1063,28 +1068,34 @@ function Install-NuGetIfRequired {
     }
 }
 
-function Get-ManifestName {
+function Get-ManifestProperty {
     <#
     .SYNOPSIS
-    Retrieves the name of the library from the AppxManifest.xml file from a specified library path.
+    Retrieves a property (Name or Version) from the AppxManifest.xml file inside a specified library (ZIP) file.
 
     .DESCRIPTION
     This function opens a ZIP file at the specified path, reads the AppxManifest.xml file inside it,
-    and retrieves the name of the library from the manifest.
+    and retrieves the requested property from the package identity in the manifest.
 
     .PARAMETER Lib_Path
     The path to the library (ZIP) file containing the AppxManifest.xml.
 
+    .PARAMETER Property
+    The package identity property to retrieve: Name or Version.
+
     .EXAMPLE
-    Get-ManifestName -Lib_Path "C:\path\to\library.zip"
+    Get-ManifestProperty -Lib_Path "C:\path\to\library.zip" -Property Name
     #>
 
     param(
         [Parameter(Mandatory)]
-        [string]$Lib_Path
+        [string]$Lib_Path,
+        [Parameter(Mandatory)]
+        [ValidateSet('Name', 'Version')]
+        [string]$Property
     )
 
-    Write-Debug "Checking manifest name of $($Lib_Path)..."
+    Write-Debug "Checking manifest $Property of $($Lib_Path)..."
 
     # Load ZIP assembly to read the package contents
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -1101,62 +1112,15 @@ function Get-ManifestName {
         $reader.Close()
         $zip.Dispose()
 
-        # Output the name from the manifest
-        $DownloadedLibName = $xml.Package.Identity.Name
-        Write-Debug "Downloaded library name: $DownloadedLibName"
+        # Output the requested property from the manifest
+        $value = $xml.Package.Identity.$Property
+        Write-Debug "Downloaded library ${Property}: $value"
     } else {
-        Write-Error "AppxManifest.xml not found inside the file: $Lib_Path"
-    }
-
-    return $DownloadedLibName
-}
-
-function Get-ManifestVersion {
-    <#
-    .SYNOPSIS
-    Retrieves the version of the AppxManifest.xml file from a specified library path.
-
-    .DESCRIPTION
-    This function opens a ZIP file at the specified path, reads the AppxManifest.xml file inside it,
-    and retrieves the version information from the manifest.
-
-    .PARAMETER Lib_Path
-    The path to the library (ZIP) file containing the AppxManifest.xml.
-
-    .EXAMPLE
-    Get-ManifestVersion -Lib_Path "C:\path\to\library.zip"
-    #>
-
-    param(
-        [Parameter(Mandatory)]
-        [string]$Lib_Path
-    )
-
-    Write-Debug "Checking manifest version of $($Lib_Path)..."
-
-    # Load ZIP assembly to read the package contents
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($Lib_Path)
-
-    Write-Debug "Reading AppxManifest.xml from $($Lib_Path)..."
-    # Find and read the AppxManifest.xml
-    $entry = $zip.Entries | Where-Object { $_.FullName -eq "AppxManifest.xml" }
-
-    if ($entry) {
-        $stream = $entry.Open()
-        $reader = New-Object System.IO.StreamReader($stream)
-        [xml]$xml = $reader.ReadToEnd()
-        $reader.Close()
         $zip.Dispose()
-
-        # Output the version from the manifest
-        $DownloadedLibVersion = $xml.Package.Identity.Version
-        Write-Debug "Downloaded library version: $DownloadedLibVersion"
-    } else {
         Write-Error "AppxManifest.xml not found inside the file: $Lib_Path"
     }
 
-    return $DownloadedLibVersion
+    return $value
 }
 
 function Get-InstalledLibVersion {
@@ -1223,7 +1187,7 @@ function Install-LibIfRequired {
     $InstalledLibVersion = Get-InstalledLibVersion -Lib_Name $Lib_Name
 
     # Extract version from the downloaded file
-    $DownloadedLibVersion = Get-ManifestVersion -Lib_Path $Lib_Path
+    $DownloadedLibVersion = Get-ManifestProperty -Lib_Path $Lib_Path -Property Version
 
     # Compare versions and install if necessary
     if (!$InstalledLibVersion -or !$DownloadedLibVersion -or ($DownloadedLibVersion -gt $InstalledLibVersion)) {
@@ -1320,9 +1284,6 @@ $osVersion = Get-OSInfo
 # Get architecture type
 $arch = $osVersion.Architecture
 
-# Get current process module name to determine if launched in conhost
-$currentProcess = Get-CurrentProcess
-
 # If it's a workstation, make sure it is Windows 10+
 if ($osVersion.Type -eq "Workstation" -and $osVersion.NumericVersion -lt 10) {
     Write-Error "winget requires Windows 10 or later on workstations. Your version of Windows is not supported."
@@ -1353,6 +1314,10 @@ if (Get-WingetStatus) {
 # Check if ForceClose parameter is specified. If terminal detected, so relaunch in conhost
 if ($ForceClose) {
     Write-Warning "ForceClose parameter is specified."
+
+    # Get current process module name to determine if launched in conhost (takes a second, so only done when needed)
+    $currentProcess = Get-CurrentProcess
+
     if ($currentProcess.Name -eq "WindowsTerminal") {
         Write-Warning "Terminal detected, relaunching in conhost in 10 seconds..."
         Write-Warning "It may break your custom batch files and ps1 scripts with extra commands!"
@@ -1458,7 +1423,7 @@ try {
 
         $DepsZip = Join-Path $BaseTemp "deps.zip"
         try {
-            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+            $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion -GHtoken $GHtoken
         } catch {
             # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
             $DepsUrl = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -GHtoken $GHtoken
@@ -1612,7 +1577,7 @@ try {
             # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
             $winget_dependencies_path = New-TemporaryFile2
             try {
-                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion
+                $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -WingetVersion $WingetVersion -GHtoken $GHtoken
             } catch {
                 # If we can't get the dependencies of the exact version the user wants, fall back to try to find another version that has them
                 $winget_dependencies_url = Get-WingetDownloadUrl -Match 'DesktopAppInstaller_Dependencies.zip' -GHtoken $GHtoken
@@ -1633,7 +1598,7 @@ try {
                     Write-Debug "Extracting $($_.FullName) to $destPath..."
                     [System.IO.Compression.ZipFileExtensions]::ExtractToFile($_, $destPath, $true)
 
-                    $AppName = Get-ManifestName $destPath
+                    $AppName = Get-ManifestProperty -Lib_Path $destPath -Property Name
                     Write-Output "Installing $AppName..."
                     Install-LibIfRequired -Lib_Name $AppName -Lib_Path $destPath
                     Write-Debug "Removing temporary library file..."
@@ -1666,7 +1631,7 @@ try {
             # Download winget license
             $winget_license_path = New-TemporaryFile2
             try {
-                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -WingetVersion $WingetVersion
+                $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -WingetVersion $WingetVersion -GHtoken $GHtoken
             } catch {
                 # If we can't get the license XML of the exact version the user wants, fall back to try to find another version that has it
                 $winget_license_url = Get-WingetDownloadUrl -Match "License1.xml" -GHtoken $GHtoken
