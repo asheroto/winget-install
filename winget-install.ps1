@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.3.7
+.VERSION 5.3.8
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -72,6 +72,7 @@
 [Version 5.3.5] - Improved winget detection to verify installation and functionality. Enforced alternate install method on Server 2022. Added winget AppX detection to prevent appx registration errors.
 [Version 5.3.6] - Fixed bug where GitHub token was not being used during an update check. Thanks for @dteusner for the fix.
 [Version 5.3.7] - Fixed bug where the PowerShell window would close when running the script with irm | iex. Fixed bug where the GitHub token was not being used when downloading dependencies and the license. Fixed version comparison during update check. Improved script startup speed by only detecting the current process when using -ForceClose. Combined manifest helper functions into Get-ManifestProperty.
+[Version 5.3.8] - Fixed regression from 5.3.7 where the process exit code was not returned to non-interactive hosts (Intune, RMM, CI) when running the script with irm | iex.
 
 #>
 
@@ -105,7 +106,7 @@
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.3.7
+    Version      : 5.3.8
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -127,7 +128,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.3.7'
+$CurrentVersion = '5.3.8'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -689,9 +690,14 @@ function ExitWithDelay {
     # Exit the script with exit code
     # When running via 'irm | iex' there is no script file frame, so 'exit' would terminate
     # the entire PowerShell session and close the window. $PSCommandPath is empty in that
-    # case, so use Break to unwind instead of Exit.
+    # case, so use Break to unwind instead of Exit - but only for interactive sessions.
+    # Non-interactive hosts (-Command / -EncodedCommand / -NonInteractive) still use Exit so
+    # that automation (Intune, RMM, CI) receives the correct process exit code.
     if ([string]::IsNullOrEmpty($PSCommandPath)) {
         $global:LASTEXITCODE = $ExitCode
+        if ([Environment]::GetCommandLineArgs() -match '^-{1,2}(c(ommand)?|e(c|ncodedCommand)?|noni(nteractive)?)$') {
+            Exit $ExitCode
+        }
         Break
     } else {
         Exit $ExitCode
