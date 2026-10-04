@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.3.8
+.VERSION 5.4.0
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -73,6 +73,7 @@
 [Version 5.3.6] - Fixed bug where GitHub token was not being used during an update check. Thanks for @dteusner for the fix.
 [Version 5.3.7] - Fixed bug where the PowerShell window would close when running the script with irm | iex. Fixed bug where the GitHub token was not being used when downloading dependencies and the license. Fixed version comparison during update check. Improved script startup speed by only detecting the current process when using -ForceClose. Combined manifest helper functions into Get-ManifestProperty.
 [Version 5.3.8] - Fixed regression from 5.3.7 where the process exit code was not returned to non-interactive hosts (Intune, RMM, CI) when running the script with irm | iex.
+[Version 5.4.0] -Fixed UpdateSelf and dependency version comparisons that compared versions as strings. Fixed a dependency that was not installed being reported as installed and skipped. Fixed -PortableInstallMethod also running the standard install and registration on Windows 10/11. Fixed PATH handling so %VAR% entries are written as REG_EXPAND_SZ and existing entries are no longer flattened. Fixed duplicate user PATH entries on repeated runs. Removed GitHub token from debug and verbose output. Added help for AlternateInstallMethod, PortableInstallMethod, and WingetVersion. Hardened portable zip extraction against path traversal and disabled DTD processing when reading package manifests. Added Pester test suite. Minor cleanup.
 
 #>
 
@@ -101,12 +102,18 @@
     Checks if there is an update available for the script.
 .PARAMETER GHtoken
     The GitHub token to access to the GitHub API with higher rate limit.
+.PARAMETER AlternateInstallMethod
+    Installs winget by downloading the dependencies, license, and msixbundle from the winget-cli GitHub repository instead of using Repair-WinGetPackageManager. Used automatically on Server 2019, Server 2022, and when running as SYSTEM.
+.PARAMETER PortableInstallMethod
+    Extracts winget and its dependencies to Program Files\Microsoft\winget without AppX registration. Used automatically on Server Core. Beta.
+.PARAMETER WingetVersion
+    The version of winget to install (for example 1.9.25200). Defaults to latest. Only applies to the alternate and portable install methods.
 .PARAMETER Version
     Displays the version of the script.
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.3.8
+    Version      : 5.4.0
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -128,7 +135,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.3.8'
+$CurrentVersion = '5.4.0'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -393,7 +400,7 @@ function UpdateSelf {
         $psGalleryScriptVersion = (Find-Script -Name $PowerShellGalleryName).Version
 
         # If the current version is less than the PSGallery version, update the script
-        if ($CurrentVersion -lt $psGalleryScriptVersion) {
+        if ([version]$CurrentVersion -lt [version]$psGalleryScriptVersion) {
             Write-Output "Updating script to version $psGalleryScriptVersion..."
 
             # Check if running in PowerShell 7 or greater
@@ -565,12 +572,6 @@ function Handle-Error {
     #>
     param($ErrorRecord)
 
-    # Store current value
-    $OriginalErrorActionPreference = $ErrorActionPreference
-
-    # Set to silently continue
-    $ErrorActionPreference = 'SilentlyContinue'
-
     # Handle common errors
     # Not returning $ErrorRecord on some errors is intentional
     if ($ErrorRecord.Exception.Message -match '0x80073D06') {
@@ -605,9 +606,6 @@ function Handle-Error {
         # For other errors, we should stop the execution and return the ErrorRecord so that the calling try/catch block throws the error
         return $ErrorRecord
     }
-
-    # Reset to original value
-    $ErrorActionPreference = $OriginalErrorActionPreference
 }
 
 function Get-CurrentProcess {
@@ -801,20 +799,55 @@ function Path-ExistsInEnvironment {
     $pathExists = $false
 
     if ($Scope -eq 'User' -or $Scope -eq 'Both') {
-        $userEnvPath = $env:PATH
-        if (($userEnvPath -split ';').Contains($PathToCheck)) {
+        if ((Get-RawEnvironmentPath -Scope 'User') -split ';' -contains $PathToCheck) {
             $pathExists = $true
         }
     }
 
     if ($Scope -eq 'System' -or $Scope -eq 'Both') {
-        $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
-        if (($systemEnvPath -split ';').Contains($PathToCheck)) {
+        if ((Get-RawEnvironmentPath -Scope 'System') -split ';' -contains $PathToCheck) {
             $pathExists = $true
         }
     }
 
     return $pathExists
+}
+
+function Get-EnvironmentPathRegistryKey {
+    <#
+    .SYNOPSIS
+    Returns the registry key that stores the PATH variable for the given scope.
+
+    .DESCRIPTION
+    PATH is read and written through the registry instead of [Environment]::GetEnvironmentVariable / SetEnvironmentVariable.
+    Those methods expand %VAR% entries on read and write the value back as REG_SZ, which flattens every existing
+    %USERPROFILE%-style entry to a fixed path and leaves new literal entries such as %LOCALAPPDATA% permanently unexpanded.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('User', 'System')]
+        [string]$Scope
+    )
+
+    if ($Scope -eq 'User') {
+        return 'HKCU:\Environment'
+    }
+    return 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment'
+}
+
+function Get-RawEnvironmentPath {
+    <#
+    .SYNOPSIS
+    Returns the PATH variable for the given scope exactly as stored in the registry, without expanding %VAR% entries.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('User', 'System')]
+        [string]$Scope
+    )
+
+    $key = Get-Item -Path (Get-EnvironmentPathRegistryKey -Scope $Scope)
+    return [string]$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
 }
 
 function Add-ToEnvironmentPath {
@@ -845,21 +878,23 @@ function Add-ToEnvironmentPath {
 
     # Check if the path is already in the environment PATH variable
     if (-not (Path-ExistsInEnvironment -PathToCheck $PathToAdd -Scope $Scope)) {
-        if ($Scope -eq 'System') {
-            # Get the current system PATH
-            $systemEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::Machine)
-            # Add to system PATH
-            $systemEnvPath += ";$PathToAdd"
-            [System.Environment]::SetEnvironmentVariable('PATH', $systemEnvPath, [System.EnvironmentVariableTarget]::Machine)
-            Write-Debug "Adding $PathToAdd to the system PATH."
-        } elseif ($Scope -eq 'User') {
-            # Get the current user PATH
-            $userEnvPath = [System.Environment]::GetEnvironmentVariable('PATH', [System.EnvironmentVariableTarget]::User)
-            # Add to user PATH
-            $userEnvPath += ";$PathToAdd"
-            [System.Environment]::SetEnvironmentVariable('PATH', $userEnvPath, [System.EnvironmentVariableTarget]::User)
-            Write-Debug "Adding $PathToAdd to the user PATH."
+        $currentPath = Get-RawEnvironmentPath -Scope $Scope
+        $newPath = if ($currentPath) { $currentPath.TrimEnd(';') + ";$PathToAdd" } else { $PathToAdd }
+
+        # ExpandString (REG_EXPAND_SZ) keeps %VAR% entries expandable by Windows, see Get-EnvironmentPathRegistryKey
+        Set-ItemProperty -Path (Get-EnvironmentPathRegistryKey -Scope $Scope) -Name 'Path' -Value $newPath -Type ExpandString
+        Write-Debug "Adding $PathToAdd to the $Scope PATH."
+
+        # Notify running processes (such as Explorer) that the environment changed, as SetEnvironmentVariable would have done
+        if (-not ('WingetInstall.NativeMethods' -as [type])) {
+            Add-Type -Namespace WingetInstall -Name NativeMethods -MemberDefinition @'
+[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+'@
         }
+        $broadcastResult = [UIntPtr]::Zero
+        # HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG, 5 second timeout
+        [void][WingetInstall.NativeMethods]::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$broadcastResult)
 
         # Update the current process environment PATH
         if (-not ($env:PATH -split ';').Contains($PathToAdd)) {
@@ -1106,24 +1141,35 @@ function Get-ManifestProperty {
     # Load ZIP assembly to read the package contents
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [System.IO.Compression.ZipFile]::OpenRead($Lib_Path)
+    $value = $null
 
-    Write-Debug "Reading AppxManifest.xml from $($Lib_Path)..."
-    # Find and read the AppxManifest.xml
-    $entry = $zip.Entries | Where-Object { $_.FullName -eq "AppxManifest.xml" }
+    try {
+        Write-Debug "Reading AppxManifest.xml from $($Lib_Path)..."
+        # Find and read the AppxManifest.xml
+        $entry = $zip.Entries | Where-Object { $_.FullName -eq "AppxManifest.xml" }
 
-    if ($entry) {
-        $stream = $entry.Open()
-        $reader = New-Object System.IO.StreamReader($stream)
-        [xml]$xml = $reader.ReadToEnd()
-        $reader.Close()
+        if ($entry) {
+            # The manifest comes from a downloaded file, so parse it with DTD processing prohibited
+            # and no resolver. This blocks external entity (XXE) tricks; real manifests never use a DTD.
+            $settings = New-Object System.Xml.XmlReaderSettings
+            $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+            $settings.XmlResolver = $null
+            $xmlReader = [System.Xml.XmlReader]::Create($entry.Open(), $settings)
+            try {
+                $xml = New-Object System.Xml.XmlDocument
+                $xml.Load($xmlReader)
+            } finally {
+                $xmlReader.Dispose()
+            }
+
+            # Output the requested property from the manifest
+            $value = $xml.Package.Identity.$Property
+            Write-Debug "Downloaded library ${Property}: $value"
+        } else {
+            Write-Error "AppxManifest.xml not found inside the file: $Lib_Path"
+        }
+    } finally {
         $zip.Dispose()
-
-        # Output the requested property from the manifest
-        $value = $xml.Package.Identity.$Property
-        Write-Debug "Downloaded library ${Property}: $value"
-    } else {
-        $zip.Dispose()
-        Write-Error "AppxManifest.xml not found inside the file: $Lib_Path"
     }
 
     return $value
@@ -1157,7 +1203,9 @@ function Get-InstalledLibVersion {
         $InstalledLibVersion = $InstalledLib.Version
         Write-Debug "Installed library version: $InstalledLibVersion"
     } else {
-        Write-Output "Library is not installed."
+        # Write-Debug, not Write-Output: anything written to the output stream becomes part of this
+        # function's return value and would make the caller think a version was found
+        Write-Debug "Library is not installed."
         $InstalledLibVersion = $null
     }
 
@@ -1196,7 +1244,7 @@ function Install-LibIfRequired {
     $DownloadedLibVersion = Get-ManifestProperty -Lib_Path $Lib_Path -Property Version
 
     # Compare versions and install if necessary
-    if (!$InstalledLibVersion -or !$DownloadedLibVersion -or ($DownloadedLibVersion -gt $InstalledLibVersion)) {
+    if (!$InstalledLibVersion -or !$DownloadedLibVersion -or ([version]$DownloadedLibVersion -gt [version]$InstalledLibVersion)) {
         if ($RunAsSystem) {
             Write-Debug 'Running as system...'
             Write-Debug "Installing library version $($DownloadedLibVersion)..."
@@ -1378,7 +1426,7 @@ try {
         $PortableWingetDirectory = Join-Path $env:ProgramFiles "Microsoft\winget"
 
         # Determine architecture
-        $arch = (Get-OSInfo).Architecture
+        $arch = $osVersion.Architecture
         if ($arch -eq "x32") { $arch = "x86" }
 
         # Define staging and extraction paths
@@ -1400,32 +1448,45 @@ try {
                 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
             }
 
+            # Every entry must land inside the destination. A crafted archive can carry entry names
+            # such as "..\..\evil.dll" and would otherwise be written outside the extraction folder.
+            $destinationRoot = [System.IO.Path]::GetFullPath($Destination).TrimEnd('\') + '\'
+
             # Use ZipArchive with overwrite logic
             $archive = [System.IO.Compression.ZipFile]::OpenRead($Source)
-            foreach ($entry in $archive.Entries) {
-                $target = Join-Path $Destination $entry.FullName
-                if ($entry.FullName.EndsWith("/")) {
-                    New-Item -ItemType Directory -Force -Path $target -ErrorAction SilentlyContinue | Out-Null
-                } else {
-                    $folder = Split-Path $target -Parent
-                    if (-not (Test-Path $folder)) {
-                        New-Item -ItemType Directory -Force -Path $folder | Out-Null
+            try {
+                foreach ($entry in $archive.Entries) {
+                    $target = [System.IO.Path]::GetFullPath((Join-Path $Destination $entry.FullName))
+                    if (-not $target.StartsWith($destinationRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                        throw "Zip entry '$($entry.FullName)' would extract outside of '$Destination'. Refusing to extract."
                     }
-                    $entryStream = $entry.Open()
-                    $targetStream = [System.IO.File]::Create($target)
-                    $entryStream.CopyTo($targetStream)
-                    $targetStream.Dispose()
-                    $entryStream.Dispose()
+                    if ($entry.FullName.EndsWith("/")) {
+                        New-Item -ItemType Directory -Force -Path $target -ErrorAction SilentlyContinue | Out-Null
+                    } else {
+                        $folder = Split-Path $target -Parent
+                        if (-not (Test-Path $folder)) {
+                            New-Item -ItemType Directory -Force -Path $folder | Out-Null
+                        }
+                        $entryStream = $entry.Open()
+                        $targetStream = [System.IO.File]::Create($target)
+                        try {
+                            $entryStream.CopyTo($targetStream)
+                        } finally {
+                            $targetStream.Dispose()
+                            $entryStream.Dispose()
+                        }
+                    }
                 }
+            } finally {
+                $archive.Dispose()
             }
-            $archive.Dispose()
         }
 
         # ------------------------------------------------------------------------ #
         # Dependencies
         # ------------------------------------------------------------------------ #
         Write-Section "Dependencies"
-        Write-Verbose "GHtoken=$GHtoken"
+        Write-Debug "GHtoken specified: $(-not [string]::IsNullOrWhiteSpace($GHtoken))"
 
         $DepsZip = Join-Path $BaseTemp "deps.zip"
         try {
@@ -1526,6 +1587,7 @@ try {
         $osVersion.NumericVersion -notin 2019, 2022 -and
         $osVersion.InstallationType -ne 'Server Core' -and
         -not $AlternateInstallMethod -and
+        -not $PortableInstallMethod -and
         -not $RunAsSystem
     ) {
         Write-Section "winget"
@@ -1577,7 +1639,7 @@ try {
         # ============================================================================ #
 
         Write-Section "Dependencies"
-        Write-Debug "GHtoken=$GHtoken"
+        Write-Debug "GHtoken specified: $(-not [string]::IsNullOrWhiteSpace($GHtoken))"
 
         try {
             # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
@@ -1717,7 +1779,8 @@ try {
         $osVersion.NumericVersion -notin 2019, 2022 -and
         $osVersion.InstallationType -ne 'Server Core' -and
         -not $RunAsSystem -and
-        -not $AlternateInstallMethod
+        -not $AlternateInstallMethod -and
+        -not $PortableInstallMethod
     ) {
         $WingetPackage = Get-AppxPackage -AllUsers -Name $WingetPackageFamilyName -ErrorAction SilentlyContinue
 
