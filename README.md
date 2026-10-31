@@ -116,7 +116,7 @@ The script is published on [PowerShell Gallery](https://www.powershellgallery.co
 
 ### Method 2 - One Line Command (Runs Immediately)
 
-The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to the [latest code-signed release](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) of the script.
+The URL [asheroto.com/winget](https://asheroto.com/winget) always redirects to the [latest release](https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1) of the script.
 
 If you just need to run the basic script without any parameters, you can use the following one-line command:
 
@@ -148,7 +148,7 @@ Due to the nature of how PowerShell works, you won't be able to use any paramete
 
 #### Option C: direct release URL
 
-Alternatively, you can of course use the latest code-signed release URL directly:
+Alternatively, you can of course use the latest release URL directly:
 
 ```powershell
 irm https://github.com/asheroto/winget-install/releases/latest/download/winget-install.ps1 | iex
@@ -161,6 +161,9 @@ As a more conventional approach, download the latest [winget-install.ps1](https:
 ```powershell
 .\winget-install.ps1
 ```
+
+> [!NOTE]
+> Releases are not code signed. Under the default `RemoteSigned` execution policy, Windows blocks a downloaded script until you unblock it. Run `Unblock-File .\winget-install.ps1` once, or launch it with `powershell -ExecutionPolicy Bypass -File .\winget-install.ps1`.
 
 You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force = $true` and `$ForceClose = $true` global session variables if preferred.
 
