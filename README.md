@@ -163,7 +163,7 @@ As a more conventional approach, download the latest [winget-install.ps1](https:
 ```
 
 > [!NOTE]
-> Releases are not code signed. Under the default `RemoteSigned` execution policy, Windows blocks a downloaded script until you unblock it. Run `Unblock-File .\winget-install.ps1` once, or launch it with `powershell -ExecutionPolicy Bypass -File .\winget-install.ps1`.
+> If PowerShell refuses to run the downloaded file, run `Unblock-File .\winget-install.ps1` once, or launch it with `powershell -ExecutionPolicy Bypass -File .\winget-install.ps1`.
 
 You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force = $true` and `$ForceClose = $true` global session variables if preferred.
 
