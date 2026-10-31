@@ -15,9 +15,14 @@
 
 > [!NOTE]  
 > **What's New**
+> - Fixed dependencies that were silently skipped instead of installed on Windows Server 2019 and 2022.
+> - Fixed `-PortableInstallMethod` also running the standard install on Windows 10 and 11.
+> - Fixed PATH handling so entries such as `%LOCALAPPDATA%` are stored as expandable strings and existing entries are no longer flattened.
+> - Hardened portable extraction against path traversal and manifest parsing against external entities.
+> - Added a Pester test suite under `tests/`.
 > - Added support for GitHub API tokens (`-GHtoken`) to improve reliability when checking for the latest WinGet version or when encountering GitHub API rate limits.  
 > - Added the ability to specify a specific WinGet version using `-WingetVersion`.  
->   *Note: This only works when using `-AlternateInstallMethod` (the default method for Windows Server 2019).*
+>   *Note: This only works with `-AlternateInstallMethod` or `-PortableInstallMethod`. The alternate method is used automatically on Windows Server 2019, Windows Server 2022, and when running as SYSTEM.*
 
 ## Table of Contents
 
@@ -67,17 +72,19 @@
 ## Script Functionality
 
 -   Identifies processor architecture to decide which prerequisites are needed (x86/x64 or arm/arm64)
--   Checks Windows OS version for compatibility (Windows 10, Windows 11, Server 2019/2022)
+-   Checks Windows OS version for compatibility (Windows 10, Windows 11, Server 2019/2022/2025)
 -   If Windows 10, verifies release ID for compatibility (must be 1809 or newer)
--   All OSes except Server 2019
+-   Windows 10, Windows 11, and Server 2025 (standard method)
     -   Installs the NuGet package provider for PowerShell Gallery (if not already present)
     -   Installs the [Microsoft.WinGet.Client](https://www.powershellgallery.com/packages/Microsoft.WinGet.Client/) from PowerShell Gallery
     -   Runs `Repair-WinGetPackageManager -AllUsers` which actually installs WinGet and its dependencies, fixing any issues along the way
--   Server 2019 only
+-   Server 2019, Server 2022, SYSTEM context, or `-AlternateInstallMethod` (alternate method)
     -   Uses the UI.Xaml and VCLibs as [recommended by Microsoft](https://learn.microsoft.com/en-us/windows/package-manager/winget/#install-winget-on-windows-sandbox)
     -   The WinGet-cli license is downloaded using the latest version from GitHub
     -   Installs Visual C++ Redistributable if version 14 or higher is not already installed
     -   [WinGet-cli](https://github.com/microsoft/winget-cli) is then installed using the latest version from GitHub
+-   Server Core or `-PortableInstallMethod` (portable method, beta)
+    -   Extracts WinGet and its dependencies to `Program Files\Microsoft\winget` without AppX registration
     -   Adjust access rights & PATH environment variable
 -   Runs command registration if the WinGet command is not detected at the end of installation
 
@@ -173,8 +180,9 @@ You can use the `-Force` or `-ForceClose` parameters if needed, or use `$Force =
 | `-Debug`                  | Enables debug mode, showing additional information for troubleshooting.                                                                                                                                                                                       |
 | `-Force`                  | Ensures the installation of WinGet and its dependencies, even if they are already present.                                                                                                                                                                    |
 | `-ForceClose`             | If Windows Terminal has trouble installing WinGet, use this parameter to relaunch the script in conhost.exe and automatically end any active processes associated with WinGet that could interfere with the installation.                                     |
-| `-AlternateInstallMethod` | Alternate installation method if primary installation method fails.                                                                                                                                                                                           |
-| `-WingetVersion`          | Specifies a particular version of WinGet to install. Only supported when using `-AlternateInstallMethod`; otherwise, the latest version will always be installed.                                                                                             |
+| `-AlternateInstallMethod` | Installs WinGet by downloading the dependencies, license, and package from the winget-cli GitHub repository instead of using `Repair-WinGetPackageManager`. Used automatically on Windows Server 2019, Windows Server 2022, and when running as SYSTEM. Try this if the primary method fails. |
+| `-PortableInstallMethod`  | Extracts WinGet and its dependencies to `Program Files\Microsoft\winget` without AppX registration. Used automatically on Windows Server Core. Beta, see [issue #53](https://github.com/asheroto/winget-install/issues/53).                                     |
+| `-WingetVersion`          | Specifies a particular version of WinGet to install. Only supported with `-AlternateInstallMethod` or `-PortableInstallMethod`; otherwise, the latest version will always be installed.                                                                         |
 | `-GHtoken`                | Optional GitHub API token to increase API rate limits or access private repositories when downloading WinGet releases.                                                                                                                                        |
 | `-CheckForUpdate`         | Checks if there is an update available for the script.                                                                                                                                                                                                        |
 | `-Wait`                   | By default, the script exits immediately after completion. Although this is not supposed to close the PowerShell window, sometimes it still occurs. Use this parameter to pause the script for several seconds before exiting to observe the output.          |
