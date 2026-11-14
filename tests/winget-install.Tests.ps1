@@ -522,11 +522,14 @@ Describe 'Install-LibIfRequired' {
         Should -Invoke Add-AppxPackage -Times 0
     }
 
-    It 'provisions instead of installing when running as SYSTEM' {
+    It 'queues the library for the winget install step when running as SYSTEM' {
+        # DISM rejects framework packages passed as the main package, so they are provisioned with winget instead
         Mock Get-AppxPackage { $null }
         $RunAsSystem = $true
+        $script:DependencyPackagePaths = @()
         Install-LibIfRequired -Lib_Name 'VCLibs' -Lib_Path 'X:\lib.appx' | Out-Null
-        Should -Invoke Add-ProvisionedAppxPackage -Times 1 -Exactly -ParameterFilter { $PackagePath -eq 'X:\lib.appx' -and $Online -and $SkipLicense }
+        $script:DependencyPackagePaths | Should -Be @('X:\lib.appx')
+        Should -Invoke Add-ProvisionedAppxPackage -Times 0
         Should -Invoke Add-AppxPackage -Times 0
     }
 }
@@ -569,6 +572,23 @@ Describe 'Get-WingetStatus' {
 
     It 'is false under SYSTEM when no package folder exists' {
         Mock Find-WinGet { $null }
+        $RunAsSystem = $true
+        Get-WingetStatus | Should -BeFalse
+    }
+
+    It 'is true under SYSTEM when winget runs and exits with 0' {
+        $fake = Join-Path $TestDrive 'winget-ok.cmd'
+        Set-Content -Path $fake -Value '@echo v1.0.0'
+        Mock Find-WinGet { $fake }
+        $RunAsSystem = $true
+        Get-WingetStatus | Should -BeTrue
+    }
+
+    It 'is false under SYSTEM when winget exits with an error code' {
+        # A missing dependency DLL makes winget.exe exit non-zero without printing anything
+        $fake = Join-Path $TestDrive 'winget-broken.cmd'
+        Set-Content -Path $fake -Value '@exit /b 5'
+        Mock Find-WinGet { $fake }
         $RunAsSystem = $true
         Get-WingetStatus | Should -BeFalse
     }

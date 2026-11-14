@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 5.4.0
+.VERSION 5.4.1
 
 .GUID 3b581edb-5d90-4fa1-ba15-4f2377275463
 
@@ -74,6 +74,7 @@
 [Version 5.3.7] - Fixed bug where the PowerShell window would close when running the script with irm | iex. Fixed bug where the GitHub token was not being used when downloading dependencies and the license. Fixed version comparison during update check. Improved script startup speed by only detecting the current process when using -ForceClose. Combined manifest helper functions into Get-ManifestProperty.
 [Version 5.3.8] - Fixed regression from 5.3.7 where the process exit code was not returned to non-interactive hosts (Intune, RMM, CI) when running the script with irm | iex.
 [Version 5.4.0] -Fixed UpdateSelf and dependency version comparisons that compared versions as strings. Fixed a dependency that was not installed being reported as installed and skipped. Fixed -PortableInstallMethod also running the standard install and registration on Windows 10/11. Fixed PATH handling so %VAR% entries are written as REG_EXPAND_SZ and existing entries are no longer flattened. Fixed duplicate user PATH entries on repeated runs. Removed GitHub token from debug and verbose output. Added help for AlternateInstallMethod, PortableInstallMethod, and WingetVersion. Hardened portable zip extraction against path traversal and disabled DTD processing when reading package manifests. Added Pester test suite. Minor cleanup.
+[Version 5.4.1] - Fixed the script hanging on a "DLL was not found" dialog when running as SYSTEM on a machine where winget is present but its dependencies are missing. The -Force parameter now skips the check for an existing winget installation. Fixed dependencies failing to install with "Unspecified error" when running as SYSTEM on Server 2019. When running as SYSTEM, the script now exits with code 1 if winget does not run after installation. Fixes #81. Thanks to @felix-ng-lacity for the report.
 
 #>
 
@@ -113,7 +114,7 @@
 .PARAMETER Help
     Displays the full help information for the script.
 .NOTES
-    Version      : 5.4.0
+    Version      : 5.4.1
     Created by   : asheroto
 .LINK
     Project Site: https://github.com/asheroto/winget-install
@@ -135,7 +136,7 @@ param (
 )
 
 # Script information
-$CurrentVersion = '5.4.0'
+$CurrentVersion = '5.4.1'
 $RepoOwner = 'asheroto'
 $RepoName = 'winget-install'
 $PowerShellGalleryName = 'winget-install'
@@ -530,7 +531,29 @@ function Get-WingetStatus {
     if ($RunAsSystem) {
         $wingetPath = Find-WinGet
         if ($null -ne $wingetPath) {
-            $winget = & $wingetPath -v
+            # SEM_FAILCRITICALERRORS: if winget's dependencies are missing, winget.exe exits with an error code instead of
+            # showing a "DLL not found" dialog that nobody can dismiss under SYSTEM. Only this process and its children are
+            # affected, and the previous mode is restored right after the call.
+            if (-not ('WingetInstall.ErrorMode' -as [type])) {
+                Add-Type -Namespace WingetInstall -Name ErrorMode -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern uint GetErrorMode();
+[DllImport("kernel32.dll")] public static extern uint SetErrorMode(uint uMode);
+'@
+            }
+            $previousErrorMode = [WingetInstall.ErrorMode]::GetErrorMode()
+            [void][WingetInstall.ErrorMode]::SetErrorMode($previousErrorMode -bor 1)
+            try {
+                $winget = & $wingetPath -v
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Debug "winget -v exited with code $LASTEXITCODE"
+                    $winget = $null
+                }
+            } catch {
+                Write-Debug "winget -v failed: $_"
+                $winget = $null
+            } finally {
+                [void][WingetInstall.ErrorMode]::SetErrorMode($previousErrorMode)
+            }
         } else {
             $winget = $null
         }
@@ -1246,9 +1269,11 @@ function Install-LibIfRequired {
     # Compare versions and install if necessary
     if (!$InstalledLibVersion -or !$DownloadedLibVersion -or ([version]$DownloadedLibVersion -gt [version]$InstalledLibVersion)) {
         if ($RunAsSystem) {
+            # DISM rejects a framework package passed as the main package ("must be passed using the /dependencyPackagePath
+            # parameter"), so queue it here and provision it together with winget via -DependencyPackagePath.
             Write-Debug 'Running as system...'
-            Write-Debug "Installing library version $($DownloadedLibVersion)..."
-            $null = Add-ProvisionedAppxPackage -Online -SkipLicense -PackagePath $Lib_Path
+            Write-Debug "Queueing library version $($DownloadedLibVersion) to install with winget..."
+            $script:DependencyPackagePaths += $Lib_Path
         } else {
             Write-Debug 'Running as user...'
             Write-Debug "Installing library version $($DownloadedLibVersion)..."
@@ -1357,8 +1382,8 @@ if ($osVersion.Type -eq "Server" -and $osVersion.NumericVersion -lt 2019) {
 }
 
 # Check if winget is already installed
-if (Get-WingetStatus) {
-    if ($Force -eq $false) {
+if ($Force -eq $false) {
+    if (Get-WingetStatus) {
         Write-Warning "winget is already installed, exiting..."
         Write-Warning "If you want to reinstall winget, run the script with the -Force parameter."
         ExitWithDelay 0 5
@@ -1641,6 +1666,9 @@ try {
         Write-Section "Dependencies"
         Write-Debug "GHtoken specified: $(-not [string]::IsNullOrWhiteSpace($GHtoken))"
 
+        # Dependency packages queued by Install-LibIfRequired under SYSTEM, provisioned together with winget below
+        $script:DependencyPackagePaths = @()
+
         try {
             # Download winget dependencies (VCLibs.140.00.UWPDesktop and UI.Xaml.2.8)
             $winget_dependencies_path = New-TemporaryFile2
@@ -1669,8 +1697,11 @@ try {
                     $AppName = Get-ManifestProperty -Lib_Path $destPath -Property Name
                     Write-Output "Installing $AppName..."
                     Install-LibIfRequired -Lib_Name $AppName -Lib_Path $destPath
-                    Write-Debug "Removing temporary library file..."
-                    TryRemove $destPath
+                    # Queued libraries are still needed by the winget install step, which removes them afterward
+                    if ($destPath -notin $script:DependencyPackagePaths) {
+                        Write-Debug "Removing temporary library file..."
+                        TryRemove $destPath
+                    }
                 }
                 $zip.Dispose()
             } else {
@@ -1717,10 +1748,16 @@ try {
 
             # Install winget
             Write-Output "Installing winget..."
-            Add-AppxProvisionedPackage -Online -PackagePath $winget_path -LicensePath $winget_license_path | Out-Null
+            $provisionParams = @{ Online = $true; PackagePath = $winget_path; LicensePath = $winget_license_path }
+            if ($script:DependencyPackagePaths.Count -gt 0) {
+                Write-Debug "Installing with dependencies: $($script:DependencyPackagePaths -join ', ')"
+                $provisionParams.DependencyPackagePath = $script:DependencyPackagePaths
+            }
+            Add-AppxProvisionedPackage @provisionParams | Out-Null
 
             # Remove temporary files
             Write-Debug "Removing temporary files..."
+            $script:DependencyPackagePaths | ForEach-Object { TryRemove $_ }
             TryRemove $winget_path
             TryRemove $winget_license_path
         } catch {
@@ -1822,6 +1859,14 @@ try {
         }
     } else {
         Write-Debug "Get-WingetStatus: $WingetStatus"
+
+        # Under SYSTEM the check runs winget.exe directly, so a failure means winget does not work (not a PATH delay).
+        # Exit non-zero so deployment tools do not record the step as successful.
+        if ($RunAsSystem) {
+            Write-Warning "winget was installed but failed to run. Its dependencies may not have installed correctly. Run the script again with -Debug for details, and see the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
+            ExitWithDelay 1
+        }
+
         Write-Warning 'winget is installed but is not detected as a command. Try using winget now. If it does not work, wait about 1 minute and try again (it is sometimes delayed). Also try restarting your computer.'
         Write-Warning "If you restart your computer and the command still is not recognized, please read the Troubleshooting section`nof the README: https://github.com/asheroto/winget-install#troubleshooting`n"
         Write-Warning "Make sure you have the latest version of the script by running this command: $PowerShellGalleryName -CheckForUpdate`n`n"
